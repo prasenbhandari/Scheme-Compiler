@@ -1,13 +1,16 @@
 #include <stdio.h>
 #include <string.h>
 
-#define TABLE_SIZE 7 // Number of keywords
+#define TABLE_SIZE 12 // Number of keywords
 #define ALPHABETS 26
 #define MAX_ATTEMPTS 5
 
-const char* keywords[TABLE_SIZE] = {"if", "define", "lambda", "begin", "quote", "display", "newline"};
+const char* keywords[TABLE_SIZE] = {"if", "define", "lambda", "begin", "quote", "display", "newline", "else", "cond", "let", "cdr", "car"};
+
 int letter_frequency[ALPHABETS] = {0};
+
 int g[ALPHABETS] = {-1};
+
 const char* hash_table[TABLE_SIZE] = {NULL};         
 
 void compute_frequency(){
@@ -113,26 +116,26 @@ int look_up(const char* keyword){
     return 0;
 }
 
-int main(){
-    compute_frequency();
-    sort_keywords_by_frequency();
-    
+/* int main(){
+   compute_frequency();
+   sort_keywords_by_frequency();
+   
 
-    if (assign_hash(0)) {
-        printf("\nPerfect hash table generated successfully:\n");
-        for (int i = 0; i < TABLE_SIZE; i++) {
-            printf("[%d] = %s\n", i, hash_table[i] ? hash_table[i] : "(empty)");
-        }
-    } else {
-        printf("Failed to generate a perfect hash table.\n");
-    }
+   if (assign_hash(0)) {
+       printf("\nPerfect hash table generated successfully:\n");
+       for (int i = 0; i < TABLE_SIZE; i++) {
+           printf("[%d] = %s\n", i, hash_table[i] ? hash_table[i] : "(empty)");
+       }
+   } else {
+       printf("Failed to generate a perfect hash table.\n");
+   }
 
-	const char* test_words[10] = {"if", "define", "hello", "lambda", "begin", "world", "quote", "display", "hi", "newline"};
-	for (int i = 0; i < 10; i++) {
-		if(look_up(test_words[i])){
-			printf("{keyword = %s} found \n", test_words[i]);
-		}else{
-			printf("%s is not a keyword \n", test_words[i]);
-		}
+const char* test_words[10] = {"if", "define", "hello", "lambda", "begin", "world", "quote", "display", "hi", "newline"};
+for (int i = 0; i < 10; i++) {
+	if(look_up(test_words[i])){
+		printf("{keyword = %s} found \n", test_words[i]);
+	}else{
+		printf("%s is not a keyword \n", test_words[i]);
 	}
 }
+} */
