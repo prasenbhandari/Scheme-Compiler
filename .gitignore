@@ -1,0 +1,9 @@
+# Scheme files
+*.scm 
+
+build/
+tests/
+
+.cache/
+
+.projectile-cache.eld
