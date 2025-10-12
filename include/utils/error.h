@@ -1,17 +1,12 @@
 #ifndef ERROR_H
 #define ERROR_H
 
-typedef struct {
-    int line;
-    int column;
-    const char* message;
-} scanner_error;
+#include <stdbool.h>
 
-void init_error(void);
-void report_error(const char* message);
-int get_current_line(void);
-int get_current_column(void);
-void set_position(int line, int column);
+void init_error(const char *filename);
+void report_error(int line, int column, const char *message, ...);
+void error(int line, const char *message, ...);
+bool had_error(void);
 void cleanup_error(void);
 
 #endif // ERROR_H

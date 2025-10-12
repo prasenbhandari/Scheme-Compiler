@@ -1,41 +1,94 @@
 #include <stdio.h>
-#include "scanner.h"
-#include "buffer.h"
+#include "scanner/scanner.h"
+#include "scanner/token.h"
+#include "utils/buffer.h"
+#include "utils/error.h"
+#include "parser/parser.h"
 
-//int argc, char *argv[]
-
-int main() {
-    /* if (argc != 2) {
-        fprintf(stderr, "Usage: %s <filename>\n", argv[0]);
-        return 1;
-    } */
-
-    FILE* file = fopen("/home/prasen/Programing/C/Project/Compiler/temp.scm", "r");
-    if(!file) {
-        fprintf(stderr, "Failed to open file: %s\n", "temp.scm");
-        return 1;
+// Function to print the AST tree
+void print_ast(ast_node* node, int depth) {
+    if (!node) {
+        for (int i = 0; i < depth; i++) printf("  ");
+        printf("NULL (ERROR)\n");
+        return;
     }
     
-    init_scanner(); // Use scanner init instead of separate buffer/error inits
+    for (int i = 0; i < depth; i++) printf("  ");
+    
+    if (node->type == NODE_ATOM) {
+        printf("ATOM: ");
+        if (node->token->type == TOKEN_DEC) {
+            printf("%d\n", node->token->int_value);
+        } else if (node->token->type == TOKEN_REAL) {
+            printf("%f\n", node->token->real_value);
+        } else {
+            printf("%s\n", node->token->lexeme);
+        }
+    } else if (node->type == NODE_LIST) {
+        printf("LIST:\n");
+        for (int i = 0; i < depth; i++) printf("  ");
+        printf("  car:\n");
+        print_ast(node->car, depth + 2);
+        for (int i = 0; i < depth; i++) printf("  ");
+        printf("  cdr:\n");
+        print_ast(node->cdr, depth + 2);
+    } else if (node->type == NODE_NIL) {
+        printf("NIL\n");
+    } else {
+        printf("UNKNOWN NODE TYPE\n");
+    }
+}
 
-    if (fill_buffer(file, 0) <= 0) {
+int main(int argc, char *argv[]) {
+    if (argc != 2) {
+        fprintf(stderr, "Usage: %s <filename>\n", argv[0]);
+        return 1;
+    }
+
+    init_error(argv[1]);
+    FILE *file = fopen(argv[1], "r");
+    if (!file) {
+        report_error(0, 0, "Could not open file '%s'", argv[1]);
+        return 1;
+    }
+
+    parser* p = init_parser(file);
+    if (!p) {
+        fprintf(stderr, "Failed to initialize parser\n");
         fclose(file);
         return 1;
     }
 
-    token* t;
-    while ((t = next_token(file)) != NULL) {
-        if (t->type == TOKEN_DEC) {
-            printf("Token: %d\tType: %s\n", t->int_value, token_type_to_string(t->type));
-        } else if (t->type == TOKEN_REAL) {
-            printf("Token: %f\tType: %s\n", t->real_value, token_type_to_string(t->type));
-        } else {
-            printf("Token: %s\tType: %s\n", t->lexeme, token_type_to_string(t->type));
-        }
-        free_token(t);
+    // Check for errors during scanning initialization
+    if (had_error()) {
+        fprintf(stderr, "\nCompilation failed with errors.\n");
+        cleanup_scanner();
+        fclose(file);
+        return 1;
     }
 
-    cleanup_scanner(); // Use scanner cleanup
+    // Parse and print AST
+    printf("Parsing file: %s\n", argv[1]);
+    printf("=================\n\n");
+    
+    ast_node* ast = parse_expression(p);
+    
+    if (had_error()) {
+        fprintf(stderr, "\nCompilation failed with errors.\n");
+        cleanup_scanner();
+        fclose(file);
+        return 1;
+    }
+    
+    if (ast) {
+        printf("AST Structure:\n");
+        print_ast(ast, 0);
+    } else {
+        printf("Failed to parse expression\n");
+    }
+
+    cleanup_scanner();
     fclose(file);
-    return 0;
+
+    return had_error() ? 1 : 0;
 }

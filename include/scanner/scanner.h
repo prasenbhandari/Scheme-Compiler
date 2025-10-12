@@ -5,11 +5,8 @@
 #include "token.h"
 
 // Scanner functions
-void init_scanner(void);
+void init_scanner(FILE *file);
 void cleanup_scanner(void);
-token* next_token(FILE* file);
-int fill_buffer(FILE* file, int buffer_num);
-char* get_current_buffer(void);
-int* get_buffer_pos(void);
+token* next_token(void);
 
 #endif // SCANNER_H

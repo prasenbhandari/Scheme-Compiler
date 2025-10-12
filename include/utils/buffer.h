@@ -2,25 +2,24 @@
 #define BUFFER_H
 
 #include <stdio.h>
+#include <stdbool.h>
+#include <ctype.h>
 
 #define BUFFER_SIZE 4096
 
-typedef struct buffer_state{
-    int current_buffer;
-    int buffer_pointer;
-    int buffer_end[2];
-    int eof_reached;
-} buffer_state;
-
-buffer_state get_buffer_state(void);
-void restore_buffer_state(buffer_state state);
-void init_buffer(void);
-int fill_buffer(FILE* file, int buffer_num);
-int get_next_char(FILE* file);
+void init_buffer(FILE* file);
+char get_next_char(void);
 void unget_char(void);
+char peek_char(void);
+char skip_whitespace(void);
 void cleanup_buffer(void);
+
+// Position tracking
+int get_current_line(void);
+int get_current_column(void);
+
+// Buffer internals (for scanner)
 char* get_current_buffer(void);
 int* get_buffer_pos(void);
-void set_buffer_pos(int pos);
 
 #endif // BUFFER_H

@@ -10,135 +10,94 @@
 #define MAX_LEXEME_SIZE 256
 
 // Forward declarations for internal functions
-static token* process_number(const char* buf, int* pos);
-static token* process_string_literal(const char* buf, int* pos);
-static token* process_identifier(const char* buf, int* pos);
-static token* process_quoted_symbol(const char* buf, int* pos);
+static token* process_number(void);
+static token* process_string_literal(void);
+static token* process_identifier(void);
+static token* process_quoted_symbol(void);
 static token* try_keywords(const char* lexeme);
 
 // Processing functions implementations
-static token* process_number(const char* buf, int* pos) {
-    int start = *pos;
+static token* process_number(void) {
+    int start = *get_buffer_pos();
     token_type type = TOKEN_DEC;
     
-    if (buf[*pos] == '-') (*pos)++;
+    if (peek_char() == '-') get_next_char();
     
-    while(isdigit(buf[*pos]) && (*pos - start) < MAX_LEXEME_SIZE) {
-        (*pos)++;
+    while(isdigit(peek_char())) {
+        get_next_char();
     }
 
-    if(buf[*pos] == '.') {
-        (*pos)++;
+    if(peek_char() == '.') {
+        get_next_char();
         type = TOKEN_REAL;
-        while(isdigit(buf[*pos]) && (*pos - start) < MAX_LEXEME_SIZE) {
-            (*pos)++;
+        while(isdigit(peek_char())) {
+            get_next_char();
         }
     }
 
-    int length = *pos - start;
+    int length = *get_buffer_pos() - start;
     if(length >= MAX_LEXEME_SIZE) {
-        report_error("Number too long");
+        report_error(get_current_line(), get_current_column(), "Number too long");
         return NULL;
     }
 
-    char* number = malloc(length + 1);
-    strncpy(number, &buf[start], length);
-    number[length] = '\0';
-
+    char* number = strndup(get_current_buffer() + start, length);
     token* t = create_token(number, type);
     free(number);
     return t;
 }
 
-static token* process_string_literal(const char* buf, int* pos) {
-    (*pos)++;  // Skip opening quote
-    int start = *pos;
+static token* process_string_literal(void) {
+    int start_line = get_current_line();
+    int start_column = get_current_column();
+    get_next_char(); // Skip opening quote
+    int start = *get_buffer_pos();
 
-    while(buf[*pos] != '"' && buf[*pos] != '\0' && 
-          (*pos - start) < MAX_LEXEME_SIZE) {
-        (*pos)++;
+    while(peek_char() != '"' && peek_char() != '\n' && peek_char() != EOF) {
+        get_next_char();
     }
 
-    if(buf[*pos] == '\0' || (*pos - start) >= MAX_LEXEME_SIZE) {
-        report_error("Unterminated or too long string literal");
+    if(peek_char() == '\n' || peek_char() == EOF) {
+        report_error(start_line, start_column, "Unterminated string literal");
         return NULL;
     }
 
-    int length = *pos - start;
-    char* string = malloc(length + 1);
-    strncpy(string, &buf[start], length);
-    string[length] = '\0';
-    (*pos)++;  // Skip closing quote
+    int length = *get_buffer_pos() - start;
+    char* string = strndup(get_current_buffer() + start, length);
+    get_next_char(); // Skip closing quote
 
     token* t = create_token(string, TOKEN_STR_LITERAL);
     free(string);
     return t;
 }
 
-static token* process_identifier(const char* buf, int* pos) {
-    int start = *pos;
+static token* process_identifier(void) {
+    int start = *get_buffer_pos();
 
-    while((isalnum(buf[*pos]) || buf[*pos] == '?' || 
-           buf[*pos] == '!' || buf[*pos] == '*' ||
-           buf[*pos] == '=' || buf[*pos] == '-' ||
-           buf[*pos] == '_') && 
-          (*pos - start) < MAX_LEXEME_SIZE) {
-        (*pos)++;
-    }
-
-    if((*pos - start) >= MAX_LEXEME_SIZE) {
-        report_error("Identifier too long");
-        return NULL;
+    while(isalnum(peek_char()) || strchr("?!*=-_", peek_char())) {
+        get_next_char();
     }
     
-    int length = *pos - start;
-    char* string = malloc(length + 1);
-    strncpy(string, &buf[start], length);
-    string[length] = '\0';
+    int length = *get_buffer_pos() - start;
+    char* string = strndup(get_current_buffer() + start, length);
 
     token* t = try_keywords(string);
     free(string);
     return t;
 }
 
-token* peek(FILE* file) {
-    // Save complete state
-    long file_pos = ftell(file);
-    buffer_state buf_state = get_buffer_state();
-    int current_line = get_current_line();
-    int current_column = get_current_column();
+static token* process_quoted_symbol(void) {
+    get_next_char(); // Skip quote
+    int start = *get_buffer_pos();
     
-    // Get next token
-    token* t = next_token(file);
-    
-    // Restore complete state
-    fseek(file, file_pos, SEEK_SET);
-    restore_buffer_state(buf_state);
-    set_position(current_line, current_column);
-    
-    return t;
-}
-
-static token* process_quoted_symbol(const char* buf, int* pos) {
-    int start = *pos;
-    
-    while((isalnum(buf[*pos]) || buf[*pos] == '?' || 
-           buf[*pos] == '!' || buf[*pos] == '*' ||
-           buf[*pos] == '=' || buf[*pos] == '-' ||
-           buf[*pos] == '_') && 
-          (*pos - start) < MAX_LEXEME_SIZE) {
-        (*pos)++;
+    while(isalnum(peek_char()) || strchr("?!*=-_", peek_char())) {
+        get_next_char();
     }
 
-    if((*pos - start) >= MAX_LEXEME_SIZE) {
-        report_error("Symbol too long");
-        return NULL;
-    }
-
-    int length = *pos - start;
+    int length = *get_buffer_pos() - start;
     char* symbol = malloc(length + 2);
     symbol[0] = '\'';
-    strncpy(symbol + 1, &buf[start], length);
+    strncpy(symbol + 1, get_current_buffer() + start, length);
     symbol[length + 1] = '\0';
 
     token* t = create_token(symbol, TOKEN_SYMBOL);
@@ -153,77 +112,71 @@ static token* try_keywords(const char* lexeme) {
     return create_token(lexeme, type);
 }
 
-token* next_token(FILE* file) {
-    if (!file) return NULL;
+token* next_token(void) {
+    char c = skip_whitespace();
+    if (c == EOF) return NULL;
 
-    int c;
-    char* current_buf = get_current_buffer();
-    int* pos = get_buffer_pos();
+    // Consume the character we peeked at
+    get_next_char();
 
-    // Skip whitespace
-    while ((c = get_next_char(file)) != EOF) {
-        if (!isspace(c)) {
-            unget_char();
-            break;
+    if (c == '(') return create_token("(", TOKEN_LPAREN);
+    if (c == ')') return create_token(")", TOKEN_RPAREN);
+    if (c == '+') return create_token("+", TOKEN_PLUS);
+    if (c == '*') return create_token("*", TOKEN_MULTIPLY);
+    if (c == '/') return create_token("/", TOKEN_DIVIDE);
+    if (c == '`') return create_token("`", TOKEN_BACKQUOTE);
+    if (c == ',') return create_token(",", TOKEN_COMMA);
+    if (c == '.') return create_token(".", TOKEN_DOT);
+    if (c == '=') return create_token("=", TOKEN_EQ);
+
+    if (c == '-') {
+        if (isdigit(peek_char())) {
+            return process_number();
         }
+        return create_token("-", TOKEN_MINUS);
     }
 
-    if (c == EOF) return NULL;
-
-    c = get_next_char(file);
-    if (c == EOF) return NULL;
-
-    // Handle single-character operators and special characters
-    switch(c) {
-        case '(': return create_token("(", TOKEN_LPAREN);
-        case ')': return create_token(")", TOKEN_RPAREN);
-        case '+': return create_token("+", TOKEN_PLUS);
-        case '-': 
-            if (isdigit(get_next_char(file))) {
-                unget_char();
-                return process_number(get_current_buffer(), pos);
-            }
-            return create_token("-", TOKEN_MINUS);
-        case '*': return create_token("*", TOKEN_MULTIPLY);
-        case '/': return create_token("/", TOKEN_DIVIDE);
-        case '\'': return process_quoted_symbol(get_current_buffer(), pos);
-        case '`': return create_token("`", TOKEN_BACKQUOTE);
-        case ',': return create_token(",", TOKEN_COMMA);
-        case '.': return create_token(".", TOKEN_DOT);
-        case '<':
-            c = get_next_char(file);
-            if (c == '=') return create_token("<=", TOKEN_LTE);
-            unget_char();
-            return create_token("<", TOKEN_LT);
-        case '>':
-            c = get_next_char(file);
-            if (c == '=') return create_token(">=", TOKEN_GTE);
-            unget_char();
-            return create_token(">", TOKEN_GT);
-        case '=': return create_token("=", TOKEN_EQ);
+    if (c == '<') {
+        if (peek_char() == '=') {
+            get_next_char();
+            return create_token("<=", TOKEN_LTE);
+        }
+        return create_token("<", TOKEN_LT);
     }
 
-    // Handle numbers, strings, and identifiers
+    if (c == '>') {
+        if (peek_char() == '=') {
+            get_next_char();
+            return create_token(">=", TOKEN_GTE);
+        }
+        return create_token(">", TOKEN_GT);
+    }
+
+    if (c == '\'') {
+        return process_quoted_symbol();
+    }
+
     if (isdigit(c)) {
-        unget_char();
-        return process_number(current_buf, pos);
+        unget_char(); // Put the digit back for process_number to read
+        return process_number();
     }
 
-    if(c == '"') {
-        return process_string_literal(current_buf, pos);
+    if (c == '"') {
+        unget_char(); // Put the quote back for process_string_literal to read
+        return process_string_literal();
     }
 
-    if(isalpha(c) || c == '?' || c == '!' || c == '*') {
-        unget_char();
-        return process_identifier(current_buf, pos);
+    if (isalpha(c) || strchr("?!*=-_", c)) {
+        unget_char(); // Put the character back for process_identifier to read
+        return process_identifier();
     }
 
+    report_error(get_current_line(), get_current_column(), "Unexpected character '%c'", c);
     return NULL;
 }
 
-void init_scanner(void) {
-    init_buffer();
-    init_error();
+void init_scanner(FILE *file) {
+    init_buffer(file);
 }
 
 void cleanup_scanner(void) {

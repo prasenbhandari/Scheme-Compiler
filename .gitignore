@@ -5,6 +5,7 @@ build/
 tests/
 
 .cache/
+.github/
 
 .projectile-cache.eld
 
