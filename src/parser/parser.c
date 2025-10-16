@@ -1,14 +1,16 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "scanner.h"
-#include "token.h"
-#include "error.h"
-#include "parser.h"
+#include "../../include/scanner/scanner.h"
+#include "../../include/scanner/token.h"
+#include "../../include/utils/error.h"
+#include "../../include/utils/buffer.h"
+#include "../../include/parser/parser.h"
 
 
 parser* init_parser(FILE* file) {
     parser* p = (parser*)malloc(sizeof(parser));
     p->file = file;
+    p->panic_mode = false;
 
     init_scanner(file);
 
@@ -18,7 +20,42 @@ parser* init_parser(FILE* file) {
     return p;
 }
 
-// Helper function to create a NIL node
+
+void free_parser(parser* p) {
+    if (!p) return;
+    
+    // Free current and next tokens if they exist
+    if (p->current) {
+        free_token(p->current);
+    }
+    if (p->next) {
+        free_token(p->next);
+    }
+    
+    // Free the parser structure itself
+    free(p);
+}
+
+
+static void synchronize(parser* p){
+    if (!p) return;
+
+    while(p->current != NULL){
+        if (match(p, TOKEN_RPAREN)){
+            p->panic_mode = false;
+            return;
+        }
+
+        if (match(p, TOKEN_LPAREN)){
+            p->panic_mode = false;
+            return;
+        }
+
+        advance(p);
+    }
+}
+
+
 ast_node* create_nil_node() {
     ast_node* nil = (ast_node*)malloc(sizeof(ast_node));
     nil->type = NODE_NIL;
@@ -28,11 +65,13 @@ ast_node* create_nil_node() {
     return nil;
 }
 
+
 token* peek(parser* p) {
     if (!p) return NULL;
 
     return p->current;
 }
+
 
 token* advance(parser* p) {
     if (!p) return NULL;
@@ -54,16 +93,27 @@ bool match(parser *p, token_type type){
     return false;
 }
 
+
 token* expect(parser* p, token_type type) {
     if (!match(p, type)) {
-        // Error: expected type but got something else
-        fprintf(stderr, "Expected token type %s but got %s\n",
-                token_type_to_string(type),
-                p->current ? token_type_to_string(p->current->type) : "EOF");
+        if (!p->panic_mode) {
+            if (!p->current) {
+                report_error(get_current_line(), get_current_column(),
+                            "Unexpected end of file. Expected '%s'",
+                            token_type_to_string(type));
+            } else {
+                report_error(get_current_line(), get_current_column(),
+                            "Expected '%s' but got '%s'",
+                            token_type_to_string(type),
+                            token_type_to_string(p->current->type));
+            }
+            p->panic_mode = true;
+        }
         return NULL;
     }
     return advance(p);
 }
+
 
 ast_node* parse_atom(parser* p){
     ast_node* node = (ast_node*)malloc(sizeof(ast_node));
@@ -78,6 +128,23 @@ ast_node* parse_atom(parser* p){
 
 
 ast_node* parse_expression(parser* p){
+    if (!p->current) {
+        report_error(get_current_line(), get_current_column(),
+                    "Unexpected end of file while parsing expression");
+        return NULL;
+    }
+    
+    if (match(p, TOKEN_RPAREN)) {
+        if (!p->panic_mode) {
+            report_error(get_current_line(), get_current_column(),
+                    "Unexpected ')'. Expected an expression");
+            p->panic_mode = true;
+        }
+        advance(p);
+        synchronize(p);
+        return NULL;
+    }
+    
     if(match(p, TOKEN_LPAREN)){
         return parse_list(p);
     }else{
@@ -85,25 +152,52 @@ ast_node* parse_expression(parser* p){
     }
 }
 
+
 ast_node* parse_list(parser* p){
-    expect(p, TOKEN_LPAREN);
+    if (!expect(p, TOKEN_LPAREN)) {
+        return NULL;
+    }
+    
+    // Check for empty list ()
+    if (match(p, TOKEN_RPAREN)) {
+        advance(p);
+        return create_nil_node();
+    }
     
     ast_node* node = (ast_node*)malloc(sizeof(ast_node));
     node->type = NODE_LIST;
     node->car = parse_expression(p);
-    node->cdr = create_nil_node();  // Initialize with NIL
+    
+    if (!node->car) {
+        free(node);
+        return NULL;
+    }
+    
+    node->cdr = create_nil_node();
 
     ast_node* current_list_node = node;
 
     while(!match(p, TOKEN_RPAREN)){
+        // Check for unexpected EOF
+        if (!p->current) {
+            report_error(get_current_line(), get_current_column(),
+                        "Unexpected end of file. Expected ')' to close list");
+            return NULL;
+        }
+        
         // Parse the next argument
         ast_node* arg = parse_expression(p);
+        
+        // Check if parse_expression failed
+        if (!arg) {
+            return NULL;
+        }
         
         // Create a new list node to hold this argument
         ast_node* new_list_node = (ast_node*)malloc(sizeof(ast_node));
         new_list_node->type = NODE_LIST;
         new_list_node->car = arg;
-        new_list_node->cdr = create_nil_node();  // End with NIL, not NULL
+        new_list_node->cdr = create_nil_node();
         
         // Link it to the previous node's cdr
         current_list_node->cdr = new_list_node;
@@ -112,6 +206,9 @@ ast_node* parse_list(parser* p){
         current_list_node = new_list_node;
     }
 
-    expect(p, TOKEN_RPAREN);
+    if (!expect(p, TOKEN_RPAREN)) {
+        return NULL;
+    }
+    
     return node;
 }

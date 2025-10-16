@@ -1,9 +1,11 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include "scanner/scanner.h"
 #include "scanner/token.h"
 #include "utils/buffer.h"
 #include "utils/error.h"
 #include "parser/parser.h"
+#include "analyzer/analyzer.h"
 
 // Function to print the AST tree
 void print_ast(ast_node* node, int depth) {
@@ -59,6 +61,13 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
+    analyzer* a = init_analyzer();
+    if (!a){
+        fprintf(stderr, "Failed to initialize analyzer\n");
+        fclose(file);
+        return 1;
+    }
+
     // Check for errors during scanning initialization
     if (had_error()) {
         fprintf(stderr, "\nCompilation failed with errors.\n");
@@ -71,23 +80,38 @@ int main(int argc, char *argv[]) {
     printf("Parsing file: %s\n", argv[1]);
     printf("=================\n\n");
     
-    ast_node* ast = parse_expression(p);
+    int expression_count = 0;
     
-    if (had_error()) {
-        fprintf(stderr, "\nCompilation failed with errors.\n");
-        cleanup_scanner();
-        fclose(file);
-        return 1;
-    }
-    
-    if (ast) {
-        printf("AST Structure:\n");
-        print_ast(ast, 0);
-    } else {
-        printf("Failed to parse expression\n");
+    while (p->current != NULL) {
+        ast_node* ast = parse_expression(p);
+        
+        if (!ast) {
+            if (!p->current) {
+                break;
+            }
+            continue;
+        }
+
+        // Analyze the AST
+        if (!analyze_ast(a, ast)) {
+            fprintf(stderr, "Failed to analyze AST\n");
+            continue;
+        }
+
+        if (ast) {
+            p->panic_mode = false;
+            printf("Expression %d:\n", ++expression_count);
+            print_ast(ast, 0);
+            printf("\n");
+        } else {
+            printf("Failed to parse expression\n");
+            break;
+        }
     }
 
     cleanup_scanner();
+    free_parser(p);
+    free_analyzer(a);
     fclose(file);
 
     return had_error() ? 1 : 0;

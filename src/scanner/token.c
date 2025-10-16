@@ -41,9 +41,6 @@ token_type check_keyword(const char* lexeme) {
 
         case 'a':
             if (strcmp(lexeme, "and") == 0) return TOKEN_AND;
-            if (strcmp(lexeme, "append") == 0) return TOKEN_APPEND;
-            if (strcmp(lexeme, "apply") == 0) return TOKEN_APPLY;
-            if (strcmp(lexeme, "abs") == 0) return TOKEN_ABS;
             break;
 
         case 'b':
@@ -52,27 +49,13 @@ token_type check_keyword(const char* lexeme) {
 
         case 'c':
             if (strcmp(lexeme, "case") == 0) return TOKEN_CASE;
-            if (strcmp(lexeme, "car") == 0) return TOKEN_CAR;
-            if (strcmp(lexeme, "cdr") == 0) return TOKEN_CDR;
             if (strcmp(lexeme, "cond") == 0) return TOKEN_COND;
-            if (strcmp(lexeme, "cons") == 0) return TOKEN_CONS;
             break;
 
         case 'd':
             if (strcmp(lexeme, "define") == 0) return TOKEN_DEFINE;
             if (strcmp(lexeme, "delay") == 0) return TOKEN_DELAY;
-            if (strcmp(lexeme, "display") == 0) return TOKEN_DISPLAY;
             if (strcmp(lexeme, "do") == 0) return TOKEN_DO;
-            break;
-
-        case 'e':
-            if (strcmp(lexeme, "eq?") == 0) return TOKEN_EQ_P;
-            if (strcmp(lexeme, "equal?") == 0) return TOKEN_EQUAL_P;
-            if (strcmp(lexeme, "expt") == 0) return TOKEN_EXPT;
-            break;
-
-        case 'f':
-            if (strcmp(lexeme, "force") == 0) return TOKEN_FORCE;
             break;
 
         case 'i':
@@ -81,35 +64,14 @@ token_type check_keyword(const char* lexeme) {
 
         case 'l':
             if (strcmp(lexeme, "lambda") == 0) return TOKEN_LAMBDA;
-            if (strcmp(lexeme, "length") == 0) return TOKEN_LENGTH;
             if (strcmp(lexeme, "let") == 0) return TOKEN_LET;
             if (strcmp(lexeme, "let*") == 0) return TOKEN_LET_STAR;
             if (strcmp(lexeme, "letrec") == 0) return TOKEN_LETREC;
             if (strcmp(lexeme, "letrec*") == 0) return TOKEN_LETREC_STAR;
-            if (strcmp(lexeme, "list") == 0) return TOKEN_LIST;
-            break;
-
-        case 'm':
-            if (strcmp(lexeme, "map") == 0) return TOKEN_MAP;
-            if (strcmp(lexeme, "max") == 0) return TOKEN_MAX;
-            if (strcmp(lexeme, "min") == 0) return TOKEN_MIN;
-            if (strcmp(lexeme, "modulo") == 0) return TOKEN_MOD;
-            break;
-
-        case 'n':
-            if (strcmp(lexeme, "not") == 0) return TOKEN_NOT_OP;
-            if (strcmp(lexeme, "not=") == 0) return TOKEN_NEQ;
-            if (strcmp(lexeme, "null?") == 0) return TOKEN_NULL_P;
-            if (strcmp(lexeme, "number?") == 0) return TOKEN_NUMBER_P;
             break;
 
         case 'o':
-            if (strcmp(lexeme, "or") == 0) return TOKEN_OR_OP;
-            break;
-
-        case 'p':
-            if (strcmp(lexeme, "pair?") == 0) return TOKEN_PAIR_P;
-            if (strcmp(lexeme, "procedure?") == 0) return TOKEN_PROCEDURE_P;
+            if (strcmp(lexeme, "or") == 0) return TOKEN_OR;
             break;
 
         case 'q':
@@ -117,15 +79,8 @@ token_type check_keyword(const char* lexeme) {
             if (strcmp(lexeme, "quote") == 0) return TOKEN_QUOTE;
             break;
 
-        case 'r':
-            if (strcmp(lexeme, "reverse") == 0) return TOKEN_REVERSE;
-            break;
-
         case 's':
             if (strcmp(lexeme, "set!") == 0) return TOKEN_SET;
-            if (strcmp(lexeme, "sqrt") == 0) return TOKEN_SQRT;
-            if (strcmp(lexeme, "string?") == 0) return TOKEN_STRING_P;
-            if (strcmp(lexeme, "symbol?") == 0) return TOKEN_SYMBOL;
             break;
 
         case 'u':
@@ -136,6 +91,7 @@ token_type check_keyword(const char* lexeme) {
         case 'w':
             if (strcmp(lexeme, "when") == 0) return TOKEN_WHEN;
             break;
+            
         case '\'':
             return TOKEN_SYMBOL;
             break;
@@ -146,6 +102,7 @@ token_type check_keyword(const char* lexeme) {
 
 const char* token_type_to_string(token_type type) {
     switch(type) {
+        // Special forms (keywords)
         case TOKEN_AND: return "AND";
         case TOKEN_BEGIN: return "BEGIN";
         case TOKEN_CASE: return "CASE";
@@ -153,41 +110,19 @@ const char* token_type_to_string(token_type type) {
         case TOKEN_DEFINE: return "DEFINE";
         case TOKEN_DELAY: return "DELAY";
         case TOKEN_DO: return "DO";
-        case TOKEN_FORCE: return "FORCE";
         case TOKEN_IF: return "IF";
         case TOKEN_LAMBDA: return "LAMBDA";
         case TOKEN_LET: return "LET";
         case TOKEN_LET_STAR: return "LET*";
         case TOKEN_LETREC: return "LETREC";
         case TOKEN_LETREC_STAR: return "LETREC*";
-        case TOKEN_OR_OP: return "OR";
+        case TOKEN_OR: return "OR";
         case TOKEN_QUASIQUOTE: return "QUASIQUOTE";
         case TOKEN_QUOTE: return "QUOTE";
         case TOKEN_SET: return "SET!";
         case TOKEN_UNQUOTE: return "UNQUOTE";
         case TOKEN_UNLESS: return "UNLESS";
         case TOKEN_WHEN: return "WHEN";
-        
-        // Common procedures
-        case TOKEN_APPEND: return "APPEND";
-        case TOKEN_APPLY: return "APPLY";
-        case TOKEN_CAR: return "CAR";
-        case TOKEN_CDR: return "CDR";
-        case TOKEN_CONS: return "CONS";
-        case TOKEN_DISPLAY: return "DISPLAY";
-        case TOKEN_EQ_P: return "EQ?";
-        case TOKEN_EQUAL_P: return "EQUAL?";
-        case TOKEN_LENGTH: return "LENGTH";
-        case TOKEN_LIST: return "LIST";
-        case TOKEN_MAP: return "MAP";
-        case TOKEN_NOT: return "NOT";
-        case TOKEN_NULL_P: return "NULL?";
-        case TOKEN_NUMBER_P: return "NUMBER?";
-        case TOKEN_PAIR_P: return "PAIR?";
-        case TOKEN_PROCEDURE_P: return "PROCEDURE?";
-        case TOKEN_REVERSE: return "REVERSE";
-        case TOKEN_STRING_P: return "STRING?";
-        case TOKEN_SYMBOL_P: return "SYMBOL?";
         
         // Other token types
         case TOKEN_DEC: return "DECIMAL";
@@ -197,24 +132,10 @@ const char* token_type_to_string(token_type type) {
         case TOKEN_RPAREN: return "RPAREN";
         case TOKEN_STR_LITERAL: return "STRING";
         case TOKEN_DOT: return "DOT";
-        case TOKEN_QUOTE_MARK: return "QUOTE";
+        case TOKEN_QUOTE_MARK: return "QUOTE_MARK";
         case TOKEN_BACKQUOTE: return "BACKQUOTE";
         case TOKEN_COMMA: return "COMMA";
-        case TOKEN_EQ: return "=";
-        case TOKEN_MIN: return "MIN";
-        case TOKEN_ABS: return "ABS";
-        case TOKEN_GT: return ">";
-        case TOKEN_LT: return "<";
-        case TOKEN_NEQ: return "NOT=";
-        case TOKEN_MULTIPLY: return "*";
-        case TOKEN_MINUS: return "-";
-        case TOKEN_PLUS: return "+";
-        case TOKEN_MOD: return "MODULO";
-        case TOKEN_EXPT: return "EXPT";
-        case TOKEN_SQRT: return "SQRT";
-        case TOKEN_GTE: return ">=";
-        case TOKEN_LTE: return "<=";
-        
+        case TOKEN_SYMBOL: return "SYMBOL";
         
         default: return "UNKNOWN";
     }

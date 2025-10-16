@@ -11,6 +11,7 @@ include_directories(
     ${PROJECT_SOURCE_DIR}/include/scanner
     ${PROJECT_SOURCE_DIR}/include/utils
     ${PROJECT_SOURCE_DIR}/include/parser
+    ${PROJECT_SOURCE_DIR}/include/analyzer
 )
 
 # Create utils library
@@ -30,12 +31,19 @@ add_library(parser_lib
     src/parser/parser.c
 )
 
+# Create analyzer library
+add_library(analyzer_lib
+    src/analyzer/symbol_table.c
+    src/analyzer/analyzer.c
+)
+
 target_link_libraries(scanner_lib utils_lib)
 target_link_libraries(parser_lib scanner_lib utils_lib)
+target_link_libraries(analyzer_lib scanner_lib utils_lib)
 
 # Create executable
 add_executable(scheme_compiler src/main.c)
-target_link_libraries(scheme_compiler parser_lib scanner_lib utils_lib)
+target_link_libraries(scheme_compiler analyzer_lib parser_lib scanner_lib utils_lib)
 
 # Add install targets
 install(TARGETS scheme_compiler DESTINATION bin)

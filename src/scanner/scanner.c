@@ -121,35 +121,36 @@ token* next_token(void) {
 
     if (c == '(') return create_token("(", TOKEN_LPAREN);
     if (c == ')') return create_token(")", TOKEN_RPAREN);
-    if (c == '+') return create_token("+", TOKEN_PLUS);
-    if (c == '*') return create_token("*", TOKEN_MULTIPLY);
-    if (c == '/') return create_token("/", TOKEN_DIVIDE);
     if (c == '`') return create_token("`", TOKEN_BACKQUOTE);
     if (c == ',') return create_token(",", TOKEN_COMMA);
     if (c == '.') return create_token(".", TOKEN_DOT);
-    if (c == '=') return create_token("=", TOKEN_EQ);
+
+    if (c == '+') return create_token("+", TOKEN_IDENTIFIER);
+    if (c == '*') return create_token("*", TOKEN_IDENTIFIER);
+    if (c == '/') return create_token("/", TOKEN_IDENTIFIER);
+    if (c == '=') return create_token("=", TOKEN_IDENTIFIER);
 
     if (c == '-') {
         if (isdigit(peek_char())) {
             return process_number();
         }
-        return create_token("-", TOKEN_MINUS);
+        return create_token("-", TOKEN_IDENTIFIER);
     }
 
     if (c == '<') {
         if (peek_char() == '=') {
             get_next_char();
-            return create_token("<=", TOKEN_LTE);
+            return create_token("<=", TOKEN_IDENTIFIER);
         }
-        return create_token("<", TOKEN_LT);
+        return create_token("<", TOKEN_IDENTIFIER);
     }
 
     if (c == '>') {
         if (peek_char() == '=') {
             get_next_char();
-            return create_token(">=", TOKEN_GTE);
+            return create_token(">=", TOKEN_IDENTIFIER);
         }
-        return create_token(">", TOKEN_GT);
+        return create_token(">", TOKEN_IDENTIFIER);
     }
 
     if (c == '\'') {

@@ -9,6 +9,7 @@ typedef struct {
     FILE* file;
     token* current;
     token* next;
+    bool panic_mode;
 } parser;
 
 typedef enum {
@@ -26,6 +27,7 @@ typedef struct ast_node {
 
 
 parser* init_parser(FILE* file);
+void free_parser(parser* p);
 token* peek(parser* p);
 token* advance(parser* p);
 bool match(parser* p, token_type type);
