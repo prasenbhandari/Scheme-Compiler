@@ -153,6 +153,14 @@ token* next_token(void) {
         return create_token(">", TOKEN_IDENTIFIER);
     }
 
+    if (c == ';') {
+        // Comment - skip until end of line
+        while (peek_char() != '\n' && peek_char() != EOF) {
+            get_next_char();
+        }
+        return next_token();
+    }
+
     if (c == '\'') {
         return process_quoted_symbol();
     }

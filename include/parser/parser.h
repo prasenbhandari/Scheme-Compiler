@@ -36,5 +36,6 @@ token* expect(parser* p, token_type type);
 ast_node* parse_expression(parser* p);
 ast_node* parse_list(parser* p);
 ast_node* parse_atom(parser* p);
+void free_ast(ast_node* node);
 
 #endif

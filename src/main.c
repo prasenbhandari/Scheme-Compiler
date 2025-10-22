@@ -103,6 +103,9 @@ int main(int argc, char *argv[]) {
             printf("Expression %d:\n", ++expression_count);
             print_ast(ast, 0);
             printf("\n");
+            
+            // Free the AST after we're done with it
+            free_ast(ast);
         } else {
             printf("Failed to parse expression\n");
             break;

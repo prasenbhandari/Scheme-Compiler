@@ -166,6 +166,7 @@ ast_node* parse_list(parser* p){
     
     ast_node* node = (ast_node*)malloc(sizeof(ast_node));
     node->type = NODE_LIST;
+    node->token = NULL;
     node->car = parse_expression(p);
     
     if (!node->car) {
@@ -211,4 +212,24 @@ ast_node* parse_list(parser* p){
     }
     
     return node;
+}
+
+void free_ast(ast_node* node){
+    if (!node) return;
+
+    switch (node->type) {
+        case NODE_NIL:
+            free(node);
+            return;
+        case NODE_ATOM:
+            if (node->token) free_token(node->token);
+            free(node);
+            return;
+        case NODE_LIST:
+            free_ast(node->car);
+            free_ast(node->cdr);
+            free(node);
+            return;
+    }
+    
 }
