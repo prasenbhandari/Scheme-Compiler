@@ -6,6 +6,9 @@
 #include "utils/error.h"
 #include "parser/parser.h"
 #include "analyzer/analyzer.h"
+#include "vm/vm.h"
+#include "vm/instruction.h"
+#include "vm/value.h"
 
 // Function to print the AST tree
 void print_ast(ast_node* node, int depth) {
@@ -41,7 +44,65 @@ void print_ast(ast_node* node, int depth) {
     }
 }
 
+// Test function for VM - manually create bytecode
+void test_vm() {
+    printf("=== VM Test ===\n");
+    
+    // Test 1: (display "hello")
+    printf("Test 1: (display \"hello\")\n");
+    bytecode bc1;
+    init_bytecode(&bc1);
+    int idx1 = add_constant(&bc1, STRING_VAL("hello"));
+    emit_instruction(&bc1, OP_CONSTANT, idx1);
+    emit_instruction(&bc1, OP_DISPLAY, 0);
+    emit_instruction(&bc1, OP_HALT, 0);
+    
+    VM vm1;
+    init_vm(&vm1);
+    vm_execute(&vm1, &bc1);
+    free_vm(&vm1);
+    free_bytecode(&bc1);
+    
+    // Test 2: (display 42)
+    printf("\nTest 2: (display 42)\n");
+    bytecode bc2;
+    init_bytecode(&bc2);
+    int idx2 = add_constant(&bc2, NUMBER_VAL(42));
+    emit_instruction(&bc2, OP_CONSTANT, idx2);
+    emit_instruction(&bc2, OP_DISPLAY, 0);
+    emit_instruction(&bc2, OP_HALT, 0);
+    
+    VM vm2;
+    init_vm(&vm2);
+    vm_execute(&vm2, &bc2);
+    free_vm(&vm2);
+    free_bytecode(&bc2);
+    
+    // Test 3: (display (+ 1 2))
+    printf("\nTest 3: (display (+ 1 2))\n");
+    bytecode bc3;
+    init_bytecode(&bc3);
+    int idx3_a = add_constant(&bc3, NUMBER_VAL(1));
+    int idx3_b = add_constant(&bc3, NUMBER_VAL(2));
+    emit_instruction(&bc3, OP_CONSTANT, idx3_a);
+    emit_instruction(&bc3, OP_CONSTANT, idx3_b);
+    emit_instruction(&bc3, OP_ADD, 0);
+    emit_instruction(&bc3, OP_DISPLAY, 0);
+    emit_instruction(&bc3, OP_HALT, 0);
+    
+    VM vm3;
+    init_vm(&vm3);
+    vm_execute(&vm3, &bc3);
+    free_vm(&vm3);
+    free_bytecode(&bc3);
+    
+    printf("\n=== VM Test Complete ===\n\n");
+}
+
 int main(int argc, char *argv[]) {
+    // Run VM test first
+    test_vm();
+    
     if (argc != 2) {
         fprintf(stderr, "Usage: %s <filename>\n", argv[0]);
         return 1;
