@@ -3,6 +3,7 @@
 
 #include "instruction.h"
 #include "value.h"
+#include <stdbool.h>
 
 #define STACK_MAX 256
 
@@ -11,6 +12,7 @@ typedef struct {
     int ip;
     Value stack[STACK_MAX];
     int stack_top;
+    bool trace_execution;  // Flag to enable/disable instruction tracing
 } VM;
 
 void init_vm(VM* vm);

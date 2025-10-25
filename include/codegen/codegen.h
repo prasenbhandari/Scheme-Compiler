@@ -1,6 +1,9 @@
 #ifndef CODEGEN_H
 #define CODEGEN_H
 
-// Code generator interface will be defined here
+#include "parser.h"
+#include "instruction.h"
+
+Bytecode* compile(AstNode* node);
 
 #endif // CODEGEN_H

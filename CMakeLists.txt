@@ -38,12 +38,18 @@ add_library(analyzer_lib
     src/analyzer/analyzer.c
 )
 
+# Create codegen library
+add_library(codegen_lib
+    src/codegen/codegen.c
+)
+
 # Create VM library
 add_library(vm_lib
     src/vm/memory.c
     src/vm/value.c
     src/vm/instruction.c
     src/vm/vm.c
+    src/vm/debug.c
 )
 
 target_link_libraries(scanner_lib utils_lib)
@@ -53,7 +59,7 @@ target_link_libraries(vm_lib utils_lib)
 
 # Create executable
 add_executable(scheme_compiler src/main.c)
-target_link_libraries(scheme_compiler vm_lib analyzer_lib parser_lib scanner_lib utils_lib)
+target_link_libraries(scheme_compiler vm_lib analyzer_lib parser_lib scanner_lib utils_lib codegen_lib)
 
 # Add install targets
 install(TARGETS scheme_compiler DESTINATION bin)

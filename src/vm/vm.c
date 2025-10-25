@@ -1,4 +1,5 @@
 #include "vm/vm.h"
+#include "vm/debug.h"
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -6,6 +7,7 @@ void init_vm(VM* vm) {
     vm->stack_top = 0;
     vm->ip = 0;
     vm->code = NULL;
+    vm->trace_execution = false;  // Tracing disabled by default
 }
 
 void free_vm(VM* vm) {
@@ -37,6 +39,18 @@ void vm_execute(VM* vm, Bytecode* bc) {
     vm->ip = 0;
     
     while (vm->ip < bc->count) {
+        // Trace execution if enabled
+        if (vm->trace_execution) {
+            printf("          ");
+            for (int i = 0; i < vm->stack_top; i++) {
+                printf("[ ");
+                print_value(vm->stack[i]);
+                printf(" ]");
+            }
+            printf("\n");
+            disassemble_instruction(bc, vm->ip);
+        }
+        
         Instruction instr = bc->instructions[vm->ip++];
         
         switch (instr.opcode) {
