@@ -7,8 +7,8 @@
 #include "../../include/parser/parser.h"
 
 
-parser* init_parser(FILE* file) {
-    parser* p = (parser*)malloc(sizeof(parser));
+Parser* init_parser(FILE* file) {
+    Parser* p = (Parser*)malloc(sizeof(Parser));
     p->file = file;
     p->panic_mode = false;
 
@@ -21,7 +21,7 @@ parser* init_parser(FILE* file) {
 }
 
 
-void free_parser(parser* p) {
+void free_parser(Parser* p) {
     if (!p) return;
     
     // Free current and next tokens if they exist
@@ -37,7 +37,7 @@ void free_parser(parser* p) {
 }
 
 
-static void synchronize(parser* p){
+static void synchronize(Parser* p){
     if (!p) return;
 
     while(p->current != NULL){
@@ -56,8 +56,8 @@ static void synchronize(parser* p){
 }
 
 
-ast_node* create_nil_node() {
-    ast_node* nil = (ast_node*)malloc(sizeof(ast_node));
+AstNode* create_nil_node() {
+    AstNode* nil = (AstNode*)malloc(sizeof(AstNode));
     nil->type = NODE_NIL;
     nil->token = NULL;
     nil->car = NULL;
@@ -66,24 +66,24 @@ ast_node* create_nil_node() {
 }
 
 
-token* peek(parser* p) {
+Token* peek(Parser* p) {
     if (!p) return NULL;
 
     return p->current;
 }
 
 
-token* advance(parser* p) {
+Token* advance(Parser* p) {
     if (!p) return NULL;
 
-    token* temp = p->current;
+    Token* temp = p->current;
     p->current = p->next;
     p->next = next_token();
 
     return temp;
 }
 
-bool match(parser *p, token_type type){
+bool match(Parser *p, TokenType type){
     if (!p || !p->current) return false;
 
     if(p->current->type == type){
@@ -94,7 +94,7 @@ bool match(parser *p, token_type type){
 }
 
 
-token* expect(parser* p, token_type type) {
+Token* expect(Parser* p, TokenType type) {
     if (!match(p, type)) {
         if (!p->panic_mode) {
             if (!p->current) {
@@ -115,8 +115,8 @@ token* expect(parser* p, token_type type) {
 }
 
 
-ast_node* parse_atom(parser* p){
-    ast_node* node = (ast_node*)malloc(sizeof(ast_node));
+AstNode* parse_atom(Parser* p){
+    AstNode* node = (AstNode*)malloc(sizeof(AstNode));
     node->type = NODE_ATOM;
     node->token = p->current;
     node->car = NULL;
@@ -127,7 +127,7 @@ ast_node* parse_atom(parser* p){
 }
 
 
-ast_node* parse_expression(parser* p){
+AstNode* parse_expression(Parser* p){
     if (!p->current) {
         report_error(get_current_line(), get_current_column(),
                     "Unexpected end of file while parsing expression");
@@ -153,7 +153,7 @@ ast_node* parse_expression(parser* p){
 }
 
 
-ast_node* parse_list(parser* p){
+AstNode* parse_list(Parser* p){
     if (!expect(p, TOKEN_LPAREN)) {
         return NULL;
     }
@@ -164,7 +164,7 @@ ast_node* parse_list(parser* p){
         return create_nil_node();
     }
     
-    ast_node* node = (ast_node*)malloc(sizeof(ast_node));
+    AstNode* node = (AstNode*)malloc(sizeof(AstNode));
     node->type = NODE_LIST;
     node->token = NULL;
     node->car = parse_expression(p);
@@ -176,7 +176,7 @@ ast_node* parse_list(parser* p){
     
     node->cdr = create_nil_node();
 
-    ast_node* current_list_node = node;
+    AstNode* current_list_node = node;
 
     while(!match(p, TOKEN_RPAREN)){
         // Check for unexpected EOF
@@ -187,7 +187,7 @@ ast_node* parse_list(parser* p){
         }
         
         // Parse the next argument
-        ast_node* arg = parse_expression(p);
+        AstNode* arg = parse_expression(p);
         
         // Check if parse_expression failed
         if (!arg) {
@@ -195,7 +195,7 @@ ast_node* parse_list(parser* p){
         }
         
         // Create a new list node to hold this argument
-        ast_node* new_list_node = (ast_node*)malloc(sizeof(ast_node));
+        AstNode* new_list_node = (AstNode*)malloc(sizeof(AstNode));
         new_list_node->type = NODE_LIST;
         new_list_node->car = arg;
         new_list_node->cdr = create_nil_node();
@@ -214,7 +214,7 @@ ast_node* parse_list(parser* p){
     return node;
 }
 
-void free_ast(ast_node* node){
+void free_ast(AstNode* node){
     if (!node) return;
 
     switch (node->type) {

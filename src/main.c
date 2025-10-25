@@ -11,7 +11,7 @@
 #include "vm/value.h"
 
 // Function to print the AST tree
-void print_ast(ast_node* node, int depth) {
+void print_ast(AstNode* node, int depth) {
     if (!node) {
         for (int i = 0; i < depth; i++) printf("  ");
         printf("NULL (ERROR)\n");
@@ -50,7 +50,7 @@ void test_vm() {
     
     // Test 1: (display "hello")
     printf("Test 1: (display \"hello\")\n");
-    bytecode bc1;
+    Bytecode bc1;
     init_bytecode(&bc1);
     int idx1 = add_constant(&bc1, STRING_VAL("hello"));
     emit_instruction(&bc1, OP_CONSTANT, idx1);
@@ -65,7 +65,7 @@ void test_vm() {
     
     // Test 2: (display 42)
     printf("\nTest 2: (display 42)\n");
-    bytecode bc2;
+    Bytecode bc2;
     init_bytecode(&bc2);
     int idx2 = add_constant(&bc2, NUMBER_VAL(42));
     emit_instruction(&bc2, OP_CONSTANT, idx2);
@@ -80,7 +80,7 @@ void test_vm() {
     
     // Test 3: (display (+ 1 2))
     printf("\nTest 3: (display (+ 1 2))\n");
-    bytecode bc3;
+    Bytecode bc3;
     init_bytecode(&bc3);
     int idx3_a = add_constant(&bc3, NUMBER_VAL(1));
     int idx3_b = add_constant(&bc3, NUMBER_VAL(2));
@@ -115,14 +115,14 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    parser* p = init_parser(file);
+    Parser* p = init_parser(file);
     if (!p) {
         fprintf(stderr, "Failed to initialize parser\n");
         fclose(file);
         return 1;
     }
 
-    analyzer* a = init_analyzer();
+    Analyzer* a = init_analyzer();
     if (!a){
         fprintf(stderr, "Failed to initialize analyzer\n");
         fclose(file);
@@ -144,7 +144,7 @@ int main(int argc, char *argv[]) {
     int expression_count = 0;
     
     while (p->current != NULL) {
-        ast_node* ast = parse_expression(p);
+        AstNode* ast = parse_expression(p);
         
         if (!ast) {
             if (!p->current) {

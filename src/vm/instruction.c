@@ -2,7 +2,7 @@
 #include "vm/memory.h"
 #include <stdio.h>
 
-void init_bytecode(bytecode* bc) {
+void init_bytecode(Bytecode* bc) {
     bc->instructions = NULL;
     bc->count = 0;
     bc->capacity = 0;
@@ -11,13 +11,13 @@ void init_bytecode(bytecode* bc) {
     bc->constant_capacity = 0;
 }
 
-void free_bytecode(bytecode* bc) {
+void free_bytecode(Bytecode* bc) {
     FREE_ARRAY(Instruction, bc->instructions, bc->capacity);
     FREE_ARRAY(Value, bc->constants, bc->constant_capacity);
     init_bytecode(bc);
 }
 
-int add_constant(bytecode* bc, Value v) {
+int add_constant(Bytecode* bc, Value v) {
     if (bc->constant_capacity < bc->constant_count + 1) {
         int old_capacity = bc->constant_capacity;
         bc->constant_capacity = GROW_CAPACITY(old_capacity);
@@ -29,7 +29,7 @@ int add_constant(bytecode* bc, Value v) {
     return bc->constant_count++;
 }
 
-void emit_instruction(bytecode* bc, Opcode op, int operand) {
+void emit_instruction(Bytecode* bc, Opcode op, int operand) {
     if (bc->capacity < bc->count + 1) {
         int old_capacity = bc->capacity;
         bc->capacity = GROW_CAPACITY(old_capacity);

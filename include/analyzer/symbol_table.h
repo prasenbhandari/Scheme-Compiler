@@ -7,30 +7,30 @@
 typedef enum {
     SYMBOL_DECLARED,
     SYMBOL_DEFINED,
-} symbol_state;
+} SymbolState;
 
 
-typedef struct symbol {
-    token* token;
-    symbol_state state;
-    struct symbol* next;
-} symbol;
+typedef struct Symbol {
+    Token* token;
+    SymbolState state;
+    struct Symbol* next;
+} Symbol;
 
 
-typedef struct scope {
-    symbol** table;
+typedef struct Scope {
+    Symbol** table;
     int count;
     int capacity;
-    struct scope* parent;
-} scope;
+    struct Scope* parent;
+} Scope;
 
 
-scope* init_scope(scope* parent);
+Scope* init_scope(Scope* parent);
 
-void free_scope(scope* s);
+void free_scope(Scope* s);
 
-bool add_symbol(scope* s, token* t);
+bool add_symbol(Scope* s, Token* t);
 
-symbol* find_symbol(scope* s, token* t);
+Symbol* find_symbol(Scope* s, Token* t);
 
 #endif

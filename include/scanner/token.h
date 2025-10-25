@@ -15,7 +15,7 @@ typedef enum {
     
     // Symbol tokens
     TOKEN_SYMBOL // quoted symbol
-} token_type;
+} TokenType;
 
 typedef struct {
     union {
@@ -23,12 +23,12 @@ typedef struct {
         int int_value;
         double real_value;
     };   
-    token_type type;
-} token;
+    TokenType type;
+} Token;
 
-token* create_token(const char* lexeme, token_type type);
-void free_token(token* t);
-const char* token_type_to_string(token_type type);
-token_type check_keyword(const char* lexeme);
+Token* create_token(const char* lexeme, TokenType type);
+void free_token(Token* t);
+const char* token_type_to_string(TokenType type);
+TokenType check_keyword(const char* lexeme);
 
 #endif // TOKEN_H

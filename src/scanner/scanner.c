@@ -10,16 +10,16 @@
 #define MAX_LEXEME_SIZE 256
 
 // Forward declarations for internal functions
-static token* process_number(void);
-static token* process_string_literal(void);
-static token* process_identifier(void);
-static token* process_quoted_symbol(void);
-static token* try_keywords(const char* lexeme);
+static Token* process_number(void);
+static Token* process_string_literal(void);
+static Token* process_identifier(void);
+static Token* process_quoted_symbol(void);
+static Token* try_keywords(const char* lexeme);
 
 // Processing functions implementations
-static token* process_number(void) {
+static Token* process_number(void) {
     int start = *get_buffer_pos();
-    token_type type = TOKEN_DEC;
+    TokenType type = TOKEN_DEC;
     
     if (peek_char() == '-') get_next_char();
     
@@ -42,12 +42,12 @@ static token* process_number(void) {
     }
 
     char* number = strndup(get_current_buffer() + start, length);
-    token* t = create_token(number, type);
+    Token* t = create_token(number, type);
     free(number);
     return t;
 }
 
-static token* process_string_literal(void) {
+static Token* process_string_literal(void) {
     int start_line = get_current_line();
     int start_column = get_current_column();
     get_next_char(); // Skip opening quote
@@ -66,12 +66,12 @@ static token* process_string_literal(void) {
     char* string = strndup(get_current_buffer() + start, length);
     get_next_char(); // Skip closing quote
 
-    token* t = create_token(string, TOKEN_STR_LITERAL);
+    Token* t = create_token(string, TOKEN_STR_LITERAL);
     free(string);
     return t;
 }
 
-static token* process_identifier(void) {
+static Token* process_identifier(void) {
     int start = *get_buffer_pos();
 
     while(isalnum(peek_char()) || strchr("?!*=-_", peek_char())) {
@@ -81,12 +81,12 @@ static token* process_identifier(void) {
     int length = *get_buffer_pos() - start;
     char* string = strndup(get_current_buffer() + start, length);
 
-    token* t = try_keywords(string);
+    Token* t = try_keywords(string);
     free(string);
     return t;
 }
 
-static token* process_quoted_symbol(void) {
+static Token* process_quoted_symbol(void) {
     get_next_char(); // Skip quote
     int start = *get_buffer_pos();
     
@@ -100,19 +100,19 @@ static token* process_quoted_symbol(void) {
     strncpy(symbol + 1, get_current_buffer() + start, length);
     symbol[length + 1] = '\0';
 
-    token* t = create_token(symbol, TOKEN_SYMBOL);
+    Token* t = create_token(symbol, TOKEN_SYMBOL);
     free(symbol);
     return t;
 }
 
 
-static token* try_keywords(const char* lexeme) {
+static Token* try_keywords(const char* lexeme) {
     if (!lexeme) return NULL;
-    token_type type = check_keyword(lexeme);
+    TokenType type = check_keyword(lexeme);
     return create_token(lexeme, type);
 }
 
-token* next_token(void) {
+Token* next_token(void) {
     char c = skip_whitespace();
     if (c == EOF) return NULL;
 

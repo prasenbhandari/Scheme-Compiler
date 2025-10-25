@@ -32,7 +32,7 @@ Value peek_stack(VM* vm, int distance) {
     return vm->stack[vm->stack_top - 1 - distance];
 }
 
-void vm_execute(VM* vm, bytecode* bc) {
+void vm_execute(VM* vm, Bytecode* bc) {
     vm->code = bc;
     vm->ip = 0;
     

@@ -27,13 +27,13 @@ typedef struct {
     Value* constants;
     int constant_count;
     int constant_capacity;
-} bytecode;
+} Bytecode;
 
 
-void init_bytecode(bytecode* bc);
-void free_bytecode(bytecode* bc);
-int add_constant(bytecode* bc, Value v);
-void emit_instruction(bytecode* bc, Opcode op, int operand);
+void init_bytecode(Bytecode* bc);
+void free_bytecode(Bytecode* bc);
+int add_constant(Bytecode* bc, Value v);
+void emit_instruction(Bytecode* bc, Opcode op, int operand);
 
 
 #endif // INSTRUCTION_H

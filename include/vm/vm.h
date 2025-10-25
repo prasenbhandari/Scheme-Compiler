@@ -7,7 +7,7 @@
 #define STACK_MAX 256
 
 typedef struct {
-    bytecode* code;
+    Bytecode* code;
     int ip;
     Value stack[STACK_MAX];
     int stack_top;
@@ -15,7 +15,7 @@ typedef struct {
 
 void init_vm(VM* vm);
 void free_vm(VM* vm);
-void vm_execute(VM* vm, bytecode* bc);
+void vm_execute(VM* vm, Bytecode* bc);
 
 void push(VM* vm, Value v);
 Value pop(VM* vm);

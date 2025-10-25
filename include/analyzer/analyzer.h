@@ -3,36 +3,28 @@
 
 #include <stdbool.h>
 #include "../parser/parser.h"
+#include "../vm/value.h"  // Use VM's ValueType as single source of truth
 #include "symbol_table.h"
 
 #define MAX_BUILTINS 50
-
-typedef enum {
-    TYPE_ANY,       // Accepts any type
-    TYPE_NUMBER,    // Integer or real number
-    TYPE_STRING,    // String literal
-    TYPE_BOOLEAN,   // True or false
-    TYPE_PAIR,      // Cons cell / list
-    TYPE_PROCEDURE  // Function/lambda
-} value_type;
 
 typedef struct {
     const char* name;
     int min_arity;      // Minimum number of arguments (-1 for special handling)
     int max_arity;      // Maximum number of arguments (-1 for unlimited)
-    value_type arg_type; // Expected type for arguments (TYPE_ANY for mixed)
-} builtin_info;
+    ValueType arg_type; // Expected type for arguments (VAL_ANY for mixed)
+} BuiltinInfo;
 
-typedef struct analyzer {
-    scope* current_scope;
-    token* builtin_tokens[50];
+typedef struct Analyzer {
+    Scope* current_scope;
+    Token* builtin_tokens[MAX_BUILTINS]; 
     int builtin_token_count;
-} analyzer;
+} Analyzer;
 
-analyzer* init_analyzer();
+Analyzer* init_analyzer();
 
-void free_analyzer(analyzer* a);
+void free_analyzer(Analyzer* a);
 
-bool analyze_ast(analyzer* a,ast_node* root);
+bool analyze_ast(Analyzer* a,AstNode* root);
 
 #endif // ANALYZER_H

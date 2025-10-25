@@ -4,8 +4,8 @@
 #include "token.h"
 
 
-token* create_token(const char* lexeme, token_type type) {
-    token* temp = malloc(sizeof(token));
+Token* create_token(const char* lexeme, TokenType type) {
+    Token* temp = malloc(sizeof(Token));
     if (!temp) {
         fprintf(stderr, "Memory allocation failed for token\n");
         exit(1);
@@ -28,7 +28,7 @@ token* create_token(const char* lexeme, token_type type) {
 }
 
 
-void free_token(token* t) {
+void free_token(Token* t) {
     if(t->type != TOKEN_DEC && t->type != TOKEN_REAL) {
         free(t->lexeme);
     }
@@ -36,7 +36,7 @@ void free_token(token* t) {
 }
 
 
-token_type check_keyword(const char* lexeme) {
+TokenType check_keyword(const char* lexeme) {
     switch(lexeme[0]) {
 
         case 'a':
@@ -100,7 +100,7 @@ token_type check_keyword(const char* lexeme) {
 }
 
 
-const char* token_type_to_string(token_type type) {
+const char* token_type_to_string(TokenType type) {
     switch(type) {
         // Special forms (keywords)
         case TOKEN_AND: return "AND";

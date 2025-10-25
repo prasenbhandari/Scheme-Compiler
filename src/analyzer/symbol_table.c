@@ -16,21 +16,21 @@ static unsigned int hash_string(const char* key, int length){
 }
 
 
-scope* init_scope(scope* parent) {
-    scope* s = (scope*)malloc(sizeof(scope));
+Scope* init_scope(Scope* parent) {
+    Scope* s = (Scope*)malloc(sizeof(Scope));
     s->parent = parent;
     s->count = 0;
     s->capacity = INITIAL_CAPACITY;
-    s->table = (symbol**)calloc(s->capacity, sizeof(symbol*));
+    s->table = (Symbol**)calloc(s->capacity, sizeof(Symbol*));
     return s;
 }
 
 
-void free_scope(scope* s){
+void free_scope(Scope* s){
     for (int i = 0; i < s->capacity; i++){
-        symbol* sym = s->table[i];
+        Symbol* sym = s->table[i];
         while(sym){
-            symbol* next = sym->next;
+            Symbol* next = sym->next;
             free(sym);
             sym = next;
         }
@@ -41,11 +41,11 @@ void free_scope(scope* s){
 }
 
 
-bool add_symbol(scope* s, token* t){
+bool add_symbol(Scope* s, Token* t){
     unsigned int hash = hash_string(t->lexeme, strlen(t->lexeme));
     unsigned int index = hash % s->capacity;
 
-    symbol* new_symbol = (symbol*)malloc(sizeof(symbol));
+    Symbol* new_symbol = (Symbol*)malloc(sizeof(Symbol));
     new_symbol->token = t;
     new_symbol->state = SYMBOL_DECLARED;
     new_symbol->next = s->table[index];
@@ -56,11 +56,11 @@ bool add_symbol(scope* s, token* t){
 }
 
 
-static symbol* find_in_scope(scope* s, token* t){
+static Symbol* find_in_scope(Scope* s, Token* t){
     unsigned int hash = hash_string(t->lexeme, strlen(t->lexeme));
     unsigned int index = hash % s->capacity;
 
-    symbol* sym = s->table[index];
+    Symbol* sym = s->table[index];
     while(sym){
         if(strcmp(t->lexeme, sym->token->lexeme) == 0){
             return sym;
@@ -73,10 +73,10 @@ static symbol* find_in_scope(scope* s, token* t){
 }
 
 
-symbol* find_symbol(scope* s, token* t){
-    scope* current = s;
+Symbol* find_symbol(Scope* s, Token* t){
+    Scope* current = s;
     while(current){
-        symbol* sym = find_in_scope(current, t);
+        Symbol* sym = find_in_scope(current, t);
         if (sym){
             return sym;
         }

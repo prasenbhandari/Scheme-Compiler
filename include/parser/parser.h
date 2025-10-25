@@ -7,35 +7,35 @@
 
 typedef struct {
     FILE* file;
-    token* current;
-    token* next;
+    Token* current;
+    Token* next;
     bool panic_mode;
-} parser;
+} Parser;
 
 typedef enum {
     NODE_ATOM,
     NODE_LIST,
     NODE_NIL
-} node_type;
+} NodeType;
 
 typedef struct ast_node {
-    node_type type;
-    token* token;
+    NodeType type;
+    Token* token;
     struct ast_node* car;
     struct ast_node* cdr;
-} ast_node;
+} AstNode;
 
 
-parser* init_parser(FILE* file);
-void free_parser(parser* p);
-token* peek(parser* p);
-token* advance(parser* p);
-bool match(parser* p, token_type type);
-token* expect(parser* p, token_type type);
+Parser* init_parser(FILE* file);
+void free_parser(Parser* p);
+Token* peek(Parser* p);
+Token* advance(Parser* p);
+bool match(Parser* p, TokenType type);
+Token* expect(Parser* p, TokenType type);
 
-ast_node* parse_expression(parser* p);
-ast_node* parse_list(parser* p);
-ast_node* parse_atom(parser* p);
-void free_ast(ast_node* node);
+AstNode* parse_expression(Parser* p);
+AstNode* parse_list(Parser* p);
+AstNode* parse_atom(Parser* p);
+void free_ast(AstNode* node);
 
 #endif

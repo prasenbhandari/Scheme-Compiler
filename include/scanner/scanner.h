@@ -7,6 +7,6 @@
 // Scanner functions
 void init_scanner(FILE *file);
 void cleanup_scanner(void);
-token* next_token(void);
+Token* next_token(void);
 
 #endif // SCANNER_H

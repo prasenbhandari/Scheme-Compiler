@@ -10,6 +10,9 @@ typedef enum {
     VAL_STRING,
     VAL_BOOL,
     VAL_NIL,
+    VAL_PAIR,      // For cons cells/lists
+    VAL_PROCEDURE, // For functions/lambdas
+    VAL_ANY,       // For semantic analysis - accepts any type
 } ValueType;
 
 typedef struct {
