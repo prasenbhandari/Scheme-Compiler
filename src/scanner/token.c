@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdio.h>
 #include "token.h"
+#include "utils/buffer.h"  // For get_current_line() and get_current_column()
 
 
 Token* create_token(const char* lexeme, TokenType type) {
@@ -12,6 +13,9 @@ Token* create_token(const char* lexeme, TokenType type) {
     }
 
     temp->type = type;
+    temp->line = get_current_line();
+    temp->column = get_current_column();
+    
     if(type == TOKEN_DEC) {
         temp->int_value = atoi(lexeme);
     } else if(type == TOKEN_REAL) {

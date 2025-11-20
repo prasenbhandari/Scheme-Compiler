@@ -1,11 +1,14 @@
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 #include "codegen/codegen.h"
 #include "instruction.h"
+#include "utils/error.h"
 
 
-static void codegen_expr(Bytecode* bc, AstNode* ast);
+static void codegen_atom(Bytecode* bc, AstNode* ast);
+static void codegen_list(Bytecode* bc, AstNode* ast);
 static void codegen_builtin(Bytecode*bc, const char* op, AstNode* args);
 
 static void codegen_atom(Bytecode* bc, AstNode* ast){
@@ -31,7 +34,8 @@ static void codegen_atom(Bytecode* bc, AstNode* ast){
         }
 
         default:
-            fprintf(stderr, "Unknown atom type");
+            report_error(ast->line, ast->column, 
+                        "Code generation error: Unknown atom type");
             break;
     }
 }
@@ -41,12 +45,15 @@ static void codegen_list(Bytecode* bc, AstNode* ast){
     AstNode* car = ast->car;
 
     if(car == NULL || car->type != NODE_ATOM){
-        fprintf(stderr, "Invalid function call\n");
+        report_error(ast->line, ast->column, 
+                    "Invalid function call: Expected identifier");
         return;
     }
 
     if(car->token->type != TOKEN_IDENTIFIER){
-        fprintf(stderr, "Invalid function name\n");
+        report_error(car->line, car->column, 
+                    "Invalid function name: Expected identifier, got '%s'", 
+                    car->token->lexeme ? car->token->lexeme : "(unknown)");
         return;
     }
 
@@ -58,33 +65,59 @@ static void codegen_list(Bytecode* bc, AstNode* ast){
 
 
 static void codegen_builtin(Bytecode* bc, const char* op, AstNode* args) {
-    if (strcmp(op, "+") == 0) {
-        // args->car is first argument
-        // args->cdr->car is second argument
+    // Handle binary arithmetic and comparison operators
+    if (strcmp(op, "+") == 0 || strcmp(op, "-") == 0 || 
+        strcmp(op, "*") == 0 || strcmp(op, "/") == 0 ||
+        strcmp(op, "<") == 0 || strcmp(op, ">") == 0 ||
+        strcmp(op, "=") == 0 || strcmp(op, "<=") == 0 ||
+        strcmp(op, ">=") == 0 || strcmp(op, "!=") == 0) {
         
+        // Validate we have at least 2 arguments
         if (args == NULL || args->type == NODE_NIL) {
-            fprintf(stderr, "Error: + requires at least 2 arguments\n");
+            report_error(args ? args->line : -1, args ? args->column : -1,
+                        "Operator '%s' requires at least 2 arguments, got 0", op);
             return;
         }
-        
-        // Compile first argument
-        codegen_expr(bc, args->car);
-        
         if (args->cdr == NULL || args->cdr->type == NODE_NIL) {
-            fprintf(stderr, "Error: + requires at least 2 arguments\n");
+            report_error(args->line, args->column,
+                        "Operator '%s' requires at least 2 arguments, got 1", op);
             return;
         }
+        
+        // Compile first argument (handles both atoms and nested lists automatically)
+        codegen_expr(bc, args->car);
         
         // Compile second argument
         codegen_expr(bc, args->cdr->car);
         
-        // Emit ADD instruction
-        emit_instruction(bc, OP_ADD, 0);
+        // Emit the appropriate instruction based on operator
+        if (strcmp(op, "+") == 0) {
+            emit_instruction(bc, OP_ADD, 0);
+        } else if (strcmp(op, "-") == 0) {
+            emit_instruction(bc, OP_SUB, 0);
+        } else if (strcmp(op, "*") == 0) {
+            emit_instruction(bc, OP_MUL, 0);
+        } else if (strcmp(op, "/") == 0) {
+            emit_instruction(bc, OP_DIV, 0);
+        } else if (strcmp(op, "<") == 0) {
+            emit_instruction(bc, OP_LESS, 0);
+        } else if (strcmp(op, ">") == 0) {
+            emit_instruction(bc, OP_GREATER, 0);
+        } else if (strcmp(op, "=") == 0) {
+            emit_instruction(bc, OP_EQUAL, 0);
+        } else if (strcmp(op, "<=") == 0) {
+            emit_instruction(bc, OP_LESS_EQUAL, 0);
+        } else if (strcmp(op, ">=") == 0) {
+            emit_instruction(bc, OP_GREATER_EQUAL, 0);
+        } else if (strcmp(op, "!=") == 0) {
+            emit_instruction(bc, OP_NOT_EQUAL, 0);
+        }
     }
     else if (strcmp(op, "display") == 0) {
         // display takes one argument
         if (args == NULL || args->type == NODE_NIL) {
-            fprintf(stderr, "Error: display requires 1 argument\n");
+            report_error(args ? args->line : -1, args ? args->column : -1,
+                        "Function 'display' requires 1 argument, got 0");
             return;
         }
         
@@ -95,15 +128,15 @@ static void codegen_builtin(Bytecode* bc, const char* op, AstNode* args) {
         emit_instruction(bc, OP_DISPLAY, 0);
     }
     else {
-        fprintf(stderr, "Error: Unknown built-in: %s\n", op);
+        // Unknown built-in - get position from first arg if available
+        int line = args ? args->line : -1;
+        int col = args ? args->column : -1;
+        report_error(line, col, "Unknown function: '%s'", op);
     }
 }
 
 
-
-
-
-static void codegen_expr(Bytecode* bc, AstNode* ast){
+void codegen_expr(Bytecode* bc, AstNode* ast){
     if (ast == NULL || ast->type == NODE_NIL) {
         return;
     }
@@ -118,7 +151,8 @@ static void codegen_expr(Bytecode* bc, AstNode* ast){
             break;
         
         default:
-            fprintf(stderr, "Unknown node type\n");
+            report_error(ast->line, ast->column,
+                        "Code generation error: Unknown node type");
             break;
     }
 }

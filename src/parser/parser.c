@@ -62,6 +62,8 @@ AstNode* create_nil_node() {
     nil->token = NULL;
     nil->car = NULL;
     nil->cdr = NULL;
+    nil->line = -1;    // NIL has no source location
+    nil->column = -1;
     return nil;
 }
 
@@ -121,6 +123,8 @@ AstNode* parse_atom(Parser* p){
     node->token = p->current;
     node->car = NULL;
     node->cdr = NULL;
+    node->line = p->current->line;      // Copy position from token
+    node->column = p->current->column;
     advance(p);
     
     return node;
@@ -154,6 +158,8 @@ AstNode* parse_expression(Parser* p){
 
 
 AstNode* parse_list(Parser* p){
+    Token* start_token = p->current;  // Save opening paren position
+    
     if (!expect(p, TOKEN_LPAREN)) {
         return NULL;
     }
@@ -167,6 +173,8 @@ AstNode* parse_list(Parser* p){
     AstNode* node = (AstNode*)malloc(sizeof(AstNode));
     node->type = NODE_LIST;
     node->token = NULL;
+    node->line = start_token->line;      // Copy position from opening paren
+    node->column = start_token->column;
     node->car = parse_expression(p);
     
     if (!node->car) {
@@ -199,6 +207,8 @@ AstNode* parse_list(Parser* p){
         new_list_node->type = NODE_LIST;
         new_list_node->car = arg;
         new_list_node->cdr = create_nil_node();
+        new_list_node->line = arg->line;      // Inherit position from argument
+        new_list_node->column = arg->column;
         
         // Link it to the previous node's cdr
         current_list_node->cdr = new_list_node;

@@ -2,6 +2,19 @@
 #include "vm/debug.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdarg.h>
+
+// Runtime error reporting
+static void runtime_error(VM* vm, const char* format, ...) {
+    va_list args;
+    va_start(args, format);
+    
+    fprintf(stderr, "Runtime error at instruction %d: ", vm->ip);
+    vfprintf(stderr, format, args);
+    fprintf(stderr, "\n");
+    
+    va_end(args);
+}
 
 void init_vm(VM* vm) {
     vm->stack_top = 0;
@@ -34,6 +47,22 @@ Value peek_stack(VM* vm, int distance) {
     return vm->stack[vm->stack_top - 1 - distance];
 }
 
+// Type-safe pop functions with runtime checking
+static Value pop_number(VM* vm) {
+    Value v = pop(vm);
+    if (!IS_NUMBER(v)) {
+        runtime_error(vm, "Type error: Expected number, got %s", 
+                     IS_STRING(v) ? "string" : 
+                     IS_BOOL(v) ? "boolean" : "other");
+        exit(1);
+    }
+    return v;
+}
+
+static Value pop_any(VM* vm) {
+    return pop(vm);
+}
+
 void vm_execute(VM* vm, Bytecode* bc) {
     vm->code = bc;
     vm->ip = 0;
@@ -64,12 +93,79 @@ void vm_execute(VM* vm, Bytecode* bc) {
                 break;
                 
             case OP_ADD: {
-                Value b = pop(vm);
-                Value a = pop(vm);
+                Value b = pop_number(vm);
+                Value a = pop_number(vm);
                 push(vm, NUMBER_VAL(AS_NUMBER(a) + AS_NUMBER(b)));
                 break;
             }
-                
+
+            case OP_SUB: {
+                Value b = pop_number(vm);
+                Value a = pop_number(vm);
+                push(vm, NUMBER_VAL(AS_NUMBER(a) - AS_NUMBER(b)));
+                break;
+            }
+
+            case OP_MUL: {
+                Value b = pop_number(vm);
+                Value a = pop_number(vm);
+                push(vm, NUMBER_VAL(AS_NUMBER(a) * AS_NUMBER(b)));
+                break;
+            }
+
+            case OP_DIV: {
+                Value b = pop_number(vm);
+                Value a = pop_number(vm);
+                if (AS_NUMBER(b) == 0) {
+                    runtime_error(vm, "Division by zero");
+                    exit(1);
+                }
+                push(vm, NUMBER_VAL(AS_NUMBER(a) / AS_NUMBER(b)));
+                break;
+            }
+
+            case OP_LESS: {
+                Value b = pop_number(vm);
+                Value a = pop_number(vm);
+                push(vm, BOOL_VAL(AS_NUMBER(a) < AS_NUMBER(b)));
+                break;
+            }
+
+            case OP_GREATER: {
+                Value b = pop_number(vm);
+                Value a = pop_number(vm);
+                push(vm, BOOL_VAL(AS_NUMBER(a) > AS_NUMBER(b)));
+                break;
+            }
+
+            case OP_EQUAL: {
+                Value b = pop_number(vm);
+                Value a = pop_number(vm);
+                push(vm, BOOL_VAL(AS_NUMBER(a) == AS_NUMBER(b)));
+                break;
+            }
+
+            case OP_LESS_EQUAL: {
+                Value b = pop_number(vm);
+                Value a = pop_number(vm);
+                push(vm, BOOL_VAL(AS_NUMBER(a) <= AS_NUMBER(b)));
+                break;
+            }
+
+            case OP_GREATER_EQUAL: {
+                Value b = pop_number(vm);
+                Value a = pop_number(vm);
+                push(vm, BOOL_VAL(AS_NUMBER(a) >= AS_NUMBER(b)));
+                break;
+            }
+
+            case OP_NOT_EQUAL: {
+                Value b = pop_number(vm);
+                Value a = pop_number(vm);
+                push(vm, BOOL_VAL(AS_NUMBER(a) != AS_NUMBER(b)));
+                break;
+            }
+
             case OP_HALT:
                 return;
                 

@@ -17,6 +17,14 @@ static const BuiltinInfo BUILTIN_TABLE[] = {
     {"*", 0, -1, VAL_NUMBER},  // (*) => 1
     {"/", 1, -1, VAL_NUMBER},  // (/ 10) => 1/10, (/ 10 2) => 5
 
+    // Comparison operators
+    {"<", 2, 2, VAL_NUMBER},
+    {">", 2, 2, VAL_NUMBER},
+    {"=", 2, 2, VAL_NUMBER},
+    {"<=", 2, 2, VAL_NUMBER},
+    {">=", 2, 2, VAL_NUMBER},
+    {"!=", 2, 2, VAL_NUMBER},
+
     // Terminator
     {NULL, 0, 0, VAL_ANY}
 };
@@ -61,7 +69,7 @@ static ValueType get_node_type(AstNode* node){
                     return VAL_ANY;
             }
         case NODE_LIST:
-            return VAL_PAIR;
+            return VAL_ANY;
         case NODE_NIL:
             return VAL_PAIR;
         default:
@@ -178,7 +186,8 @@ static void analyze_node(Analyzer* a, AstNode* node){
             if(node->token->type == TOKEN_IDENTIFIER){
                 Symbol* sym = find_symbol(a->current_scope, node->token);
                 if (!sym){
-                    report_error(-1, -1, "Undefined identifier: %s", node->token->lexeme);
+                    report_error(node->line, node->column, 
+                                "Undefined identifier: %s", node->token->lexeme);
                 }
             }
             break;
@@ -196,12 +205,14 @@ static void analyze_node(Analyzer* a, AstNode* node){
                     int arg_count = count_args(arg);
 
                     if(info->min_arity != -1 && arg_count < info->min_arity){
-                        report_error(-1, -1, "Too few arguments to '%s'. Expected at least %d, got %d.",
+                        report_error(operator->line, operator->column, 
+                                     "Too few arguments to '%s'. Expected at least %d, got %d.",
                                      info->name, info->min_arity, arg_count);
                     }
 
                     if(info->max_arity != -1 && arg_count > info->max_arity){
-                        report_error(-1, -1, "Too many arguments to '%s'. Expected at most %d, got %d.",
+                        report_error(operator->line, operator->column, 
+                                     "Too many arguments to '%s'. Expected at most %d, got %d.",
                                      info->name, info->max_arity, arg_count);
                     }
 
@@ -212,7 +223,8 @@ static void analyze_node(Analyzer* a, AstNode* node){
                         while(temp_arg && temp_arg->type != NODE_NIL){
                             ValueType arg_type = get_node_type(temp_arg->car);
                             if(arg_type != VAL_ANY && arg_type != info->arg_type){
-                                report_error(-1, -1, "Argument %d to '%s' has incorrect type. Expected %s, got %s.",
+                                report_error(temp_arg->car->line, temp_arg->car->column, 
+                                             "Argument %d to '%s' has incorrect type. Expected %s, got %s.",
                                              position, info->name, type_to_string(info->arg_type), type_to_string(arg_type));
                             }
                             temp_arg = temp_arg->cdr;

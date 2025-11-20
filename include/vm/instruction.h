@@ -6,7 +6,25 @@
 
 typedef enum {
     OP_CONSTANT, // Load constant onto the stack
+    OP_JUMP,          // Unconditional jump
+
+    // Arithemetic
     OP_ADD,     // Add top two stack values
+    OP_SUB,     // Subtract top two stack values
+    OP_MUL,     // Multiply top two stack values
+    OP_DIV,     // Divide top two stack values
+
+    // Comparison
+    OP_EQUAL,   // Check equality of top two stack values
+    OP_GREATER, // Check if second top > top stack value
+    OP_LESS,    // Check if second top < top stack value
+    OP_NOT_EQUAL, // Check if second top != top stack value
+    OP_GREATER_EQUAL, // Check if second top >= top stack value
+    OP_LESS_EQUAL,    // Check if second top <= top stack value
+
+    // If-else
+    OP_JUMP_IF_FALSE, // Jump if top stack value is false
+
     OP_DISPLAY, // Display top stack value
     OP_HALT,    // Stop execution
     OP_POP,     // Pop top value from the stack

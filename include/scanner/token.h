@@ -24,6 +24,8 @@ typedef struct {
         double real_value;
     };   
     TokenType type;
+    int line;      // Source line number
+    int column;    // Source column number
 } Token;
 
 Token* create_token(const char* lexeme, TokenType type);

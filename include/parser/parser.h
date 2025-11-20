@@ -23,6 +23,8 @@ typedef struct ast_node {
     Token* token;
     struct ast_node* car;
     struct ast_node* cdr;
+    int line;      // Source line number
+    int column;    // Source column number
 } AstNode;
 
 

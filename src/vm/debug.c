@@ -27,6 +27,33 @@ void disassemble_instruction(Bytecode* bc, int offset) {
         case OP_ADD:
             simple_instruction("OP_ADD", offset);
             break;
+        case OP_SUB:
+            simple_instruction("OP_SUB", offset);
+            break;
+        case OP_MUL:
+            simple_instruction("OP_MUL", offset);
+            break;
+        case OP_DIV:
+            simple_instruction("OP_DIV", offset);
+            break;
+        case OP_LESS:
+            simple_instruction("OP_LESS", offset);
+            break;
+        case OP_GREATER:
+            simple_instruction("OP_GREATER", offset);
+            break;
+        case OP_EQUAL:
+            simple_instruction("OP_EQUAL", offset);
+            break;
+        case OP_LESS_EQUAL:
+            simple_instruction("OP_LESS_EQUAL", offset);
+            break;
+        case OP_GREATER_EQUAL:
+            simple_instruction("OP_GREATER_EQUAL", offset);
+            break;
+        case OP_NOT_EQUAL:
+            simple_instruction("OP_NOT_EQUAL", offset);
+            break;
         case OP_DISPLAY:
             simple_instruction("OP_DISPLAY", offset);
             break;
