@@ -166,8 +166,44 @@ void vm_execute(VM* vm, Bytecode* bc) {
                 break;
             }
 
+            case OP_JUMP_IF_FALSE: {
+                Value condition = pop_any(vm);
+                if (IS_BOOL(condition) && !AS_BOOL(condition)) {
+                    vm->ip = instr.operand;
+                }
+                break;
+            }
+
+            case OP_JUMP:
+                vm->ip = instr.operand;
+                break;
+
             case OP_HALT:
                 return;
+
+            case OP_POP:
+                pop(vm);
+                break;
+
+            case OP_JUMP_IF_TRUE_OR_POP: {
+                Value v = peek_stack(vm, 0);
+                if (!(IS_BOOL(v) && !AS_BOOL(v))) {
+                    vm->ip = instr.operand;
+                } else {
+                    pop(vm);
+                }
+                break;
+            }
+
+            case OP_JUMP_IF_FALSE_OR_POP: {
+                Value v = peek_stack(vm, 0);
+                if (IS_BOOL(v) && !AS_BOOL(v)) {
+                    vm->ip = instr.operand;
+                } else {
+                    pop(vm);
+                }
+                break;
+            }
                 
             default:
                 fprintf(stderr, "Unknown opcode: %d\n", instr.opcode);

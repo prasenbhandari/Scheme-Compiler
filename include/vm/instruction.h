@@ -28,6 +28,8 @@ typedef enum {
     OP_DISPLAY, // Display top stack value
     OP_HALT,    // Stop execution
     OP_POP,     // Pop top value from the stack
+    OP_JUMP_IF_TRUE_OR_POP, // Jump if true (keep value), else pop
+    OP_JUMP_IF_FALSE_OR_POP, // Jump if false (keep value), else pop
 } Opcode;
 
 
@@ -52,6 +54,7 @@ void init_bytecode(Bytecode* bc);
 void free_bytecode(Bytecode* bc);
 int add_constant(Bytecode* bc, Value v);
 void emit_instruction(Bytecode* bc, Opcode op, int operand);
+void patch_jump(Bytecode* bc, int jump_index, int target);
 
 
 #endif // INSTRUCTION_H

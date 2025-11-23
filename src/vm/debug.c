@@ -15,6 +15,11 @@ static int constant_instruction(const char* name, Bytecode* bc, int offset) {
     return offset + 1;
 }
 
+static int jump_instruction(const char* name, int offset, int operand) {
+    printf("%-16s %4d\n", name, operand);
+    return offset + 1;
+}
+
 void disassemble_instruction(Bytecode* bc, int offset) {
     printf("%04d ", offset);
     
@@ -23,6 +28,12 @@ void disassemble_instruction(Bytecode* bc, int offset) {
     switch (instr.opcode) {
         case OP_CONSTANT:
             constant_instruction("OP_CONSTANT", bc, offset);
+            break;
+        case OP_JUMP:
+            jump_instruction("OP_JUMP", offset, instr.operand);
+            break;
+        case OP_JUMP_IF_FALSE:
+            jump_instruction("OP_JUMP_IF_FALSE", offset, instr.operand);
             break;
         case OP_ADD:
             simple_instruction("OP_ADD", offset);

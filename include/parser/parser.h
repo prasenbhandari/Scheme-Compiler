@@ -40,4 +40,7 @@ AstNode* parse_list(Parser* p);
 AstNode* parse_atom(Parser* p);
 void free_ast(AstNode* node);
 
+// Helper: get the nth argument (0-based) from a cons-cell argument list
+AstNode* get_arg(AstNode* args, int n);
+
 #endif

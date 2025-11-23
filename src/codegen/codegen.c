@@ -1,15 +1,14 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdbool.h>
 
+#include "parser/parser.h"
 #include "codegen/codegen.h"
 #include "instruction.h"
 #include "utils/error.h"
+#include "vm/memory.h"
 
-
-static void codegen_atom(Bytecode* bc, AstNode* ast);
-static void codegen_list(Bytecode* bc, AstNode* ast);
-static void codegen_builtin(Bytecode*bc, const char* op, AstNode* args);
 
 static void codegen_atom(Bytecode* bc, AstNode* ast){
     Token* token = ast->token;
@@ -33,6 +32,18 @@ static void codegen_atom(Bytecode* bc, AstNode* ast){
             break;
         }
 
+        case TOKEN_TRUE: {
+            int idx = add_constant(bc , BOOL_VAL(true));
+            emit_instruction(bc, OP_CONSTANT, idx);
+            break;
+        }
+
+        case TOKEN_FALSE: {
+            int idx = add_constant(bc, BOOL_VAL(false));
+            emit_instruction(bc, OP_CONSTANT, idx);
+            break;
+        }
+
         default:
             report_error(ast->line, ast->column, 
                         "Code generation error: Unknown atom type");
@@ -50,9 +61,29 @@ static void codegen_list(Bytecode* bc, AstNode* ast){
         return;
     }
 
+    if (car->token->type == TOKEN_IF) {
+        codegen_if(bc, ast);
+        return;
+    }
+
+    if (car->token->type == TOKEN_COND) {
+        codegen_cond(bc, ast);
+        return;
+    }
+
+    if(car->token->type == TOKEN_AND){
+        codegen_and(bc, ast);
+        return;
+    }
+
+    if (car->token->type == TOKEN_OR) {
+        codegen_or(bc, ast);
+        return;
+    }
+
     if(car->token->type != TOKEN_IDENTIFIER){
         report_error(car->line, car->column, 
-                    "Invalid function name: Expected identifier, got '%s'", 
+                    "Invalid function name: Expected identifier or special form, got '%s'", 
                     car->token->lexeme ? car->token->lexeme : "(unknown)");
         return;
     }
@@ -133,6 +164,177 @@ static void codegen_builtin(Bytecode* bc, const char* op, AstNode* args) {
         int col = args ? args->column : -1;
         report_error(line, col, "Unknown function: '%s'", op);
     }
+}
+
+
+static void codegen_or(Bytecode* bc, AstNode* ast){
+    AstNode* args = ast->cdr;
+
+    if(args->type == NODE_NIL){
+        int idx = add_constant(bc, BOOL_VAL(false));
+        emit_instruction(bc, OP_CONSTANT, idx);
+        return;
+    }
+
+    int last_jump = -1;
+
+    while(args->cdr && args->cdr->type != NODE_NIL){
+        codegen_expr(bc, args->car);
+
+        emit_instruction(bc, OP_JUMP_IF_TRUE_OR_POP, last_jump);
+        last_jump = bc->count - 1;
+
+        args = args->cdr;
+    }
+
+    codegen_expr(bc, args->car);
+
+    while (last_jump != -1) {
+        int next_jump = bc->instructions[last_jump].operand;
+        patch_jump(bc, last_jump, bc->count);
+        last_jump = next_jump;
+    }
+}
+
+
+static void codegen_and(Bytecode* bc, AstNode* ast){
+    AstNode* args = ast->cdr;
+
+    if(args->type == NODE_NIL){
+        int idx = add_constant(bc, BOOL_VAL(true));
+        emit_instruction(bc, OP_CONSTANT, idx);
+        return;
+    }
+    
+    int last_jump = -1;
+
+    while(args->cdr && args->cdr->type != NODE_NIL){
+        AstNode* arg = args->car;
+
+        codegen_expr(bc, arg);
+
+        // Emit jump, pointing to the PREVIOUS jump in the chain
+        emit_instruction(bc, OP_JUMP_IF_FALSE_OR_POP, last_jump);
+        
+        // Update head of chain to this instruction
+        last_jump = bc->count - 1;
+
+        args = args->cdr;
+
+    }    
+
+    codegen_expr(bc, args->car);
+
+    // Walk the chain and patch everything to HERE
+    while (last_jump != -1) {
+        int next_jump = bc->instructions[last_jump].operand;
+        patch_jump(bc, last_jump, bc->count);
+        last_jump = next_jump;
+    }
+}
+
+
+static void codegen_cond(Bytecode* bc, AstNode* ast){
+    AstNode* clauses = ast->cdr;
+
+    int last_exit_jump = -1;
+    bool has_else = false;
+
+    while(clauses && clauses->type != NODE_NIL){
+        AstNode* clause = clauses->car;
+        AstNode* condition = clause->car;
+        AstNode* body = clause->cdr;
+
+        bool is_else = (condition->type == NODE_ATOM && condition->token->type == TOKEN_ELSE);
+
+        if(is_else){
+            has_else = true;
+            if (body && body->type != NODE_NIL){
+                while(body && body->type != NODE_NIL){
+                    codegen_expr(bc, body->car);
+                    if(body->cdr && body->cdr->type != NODE_NIL){
+                        emit_instruction(bc, OP_POP, 0);
+                    }
+                    body = body->cdr;
+                }
+            } else {
+                int idx = add_constant(bc, NIL_VAL);
+                emit_instruction(bc, OP_CONSTANT, idx);
+            }
+            break;
+        } 
+
+        codegen_expr(bc, condition);
+
+        int jump_false_index = bc->count;
+        emit_instruction(bc, OP_JUMP_IF_FALSE, 0);
+
+        if (body && body->type != NODE_NIL){
+            while(body && body->type != NODE_NIL){
+                codegen_expr(bc, body->car);
+                if(body->cdr && body->cdr->type != NODE_NIL){
+                    emit_instruction(bc, OP_POP, 0);
+                }
+                body = body->cdr;
+            }
+        } else {
+            int idx = add_constant(bc, NIL_VAL);
+            emit_instruction(bc, OP_CONSTANT, idx);
+        }
+
+        emit_instruction(bc, OP_JUMP, last_exit_jump);
+        last_exit_jump = bc->count - 1;
+
+        patch_jump(bc, jump_false_index, bc->count);
+
+        clauses = clauses->cdr;
+
+    }
+
+    if (!has_else) {
+        int idx = add_constant(bc, NIL_VAL);
+        emit_instruction(bc, OP_CONSTANT, idx);
+    }
+
+    while (last_exit_jump != -1) {
+        int next_jump = bc->instructions[last_exit_jump].operand;
+        patch_jump(bc, last_exit_jump, bc->count);
+        last_exit_jump = next_jump;
+    }
+}
+
+
+static void codegen_if(Bytecode* bc, AstNode* ast){
+    AstNode* condition = get_arg(ast->cdr, 0);
+    AstNode* then_branch = get_arg(ast->cdr, 1);
+    AstNode* else_branch = get_arg(ast->cdr, 2);
+
+    if(!condition || !then_branch){
+        report_error(ast->line, ast->column,
+                    "'if' expression requires at least condition and then-branch");
+        return;
+    }
+
+    codegen_expr(bc, condition);
+
+    int jump_if_false_index = bc->count;;
+
+    emit_instruction(bc, OP_JUMP_IF_FALSE, 0);
+
+    codegen_expr(bc, then_branch);
+
+    int jump_over_else_index = bc->count;
+    emit_instruction(bc, OP_JUMP, 0);
+
+    int else_start_index = bc->count;
+    patch_jump(bc, jump_if_false_index, else_start_index);
+
+    if(else_branch){
+        codegen_expr(bc, else_branch);
+    }
+
+    int after_else_index = bc->count;
+    patch_jump(bc, jump_over_else_index, after_else_index);
 }
 
 

@@ -62,6 +62,10 @@ TokenType check_keyword(const char* lexeme) {
             if (strcmp(lexeme, "do") == 0) return TOKEN_DO;
             break;
 
+        case 'e':
+            if (strcmp(lexeme, "else") == 0) return TOKEN_ELSE;
+            break;
+
         case 'i':
             if (strcmp(lexeme, "if") == 0) return TOKEN_IF;
             break;
@@ -114,6 +118,7 @@ const char* token_type_to_string(TokenType type) {
         case TOKEN_DEFINE: return "DEFINE";
         case TOKEN_DELAY: return "DELAY";
         case TOKEN_DO: return "DO";
+        case TOKEN_ELSE: return "ELSE";
         case TOKEN_IF: return "IF";
         case TOKEN_LAMBDA: return "LAMBDA";
         case TOKEN_LET: return "LET";

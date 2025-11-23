@@ -243,3 +243,13 @@ void free_ast(AstNode* node){
     }
     
 }
+
+
+AstNode* get_arg(AstNode* args, int n) {
+    AstNode* cur = args;
+    for (int i = 0; i < n; i++) {
+        if (!cur || cur->type == NODE_NIL) return NULL;
+        cur = cur->cdr;
+    }
+    return cur ? cur->car : NULL;
+}

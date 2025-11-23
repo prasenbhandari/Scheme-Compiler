@@ -29,6 +29,10 @@ int add_constant(Bytecode* bc, Value v) {
     return bc->constant_count++;
 }
 
+void patch_jump(Bytecode* bc, int jump_index, int target){
+    bc->instructions[jump_index].operand = target;
+}
+
 void emit_instruction(Bytecode* bc, Opcode op, int operand) {
     if (bc->capacity < bc->count + 1) {
         int old_capacity = bc->capacity;

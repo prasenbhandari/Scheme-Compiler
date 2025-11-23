@@ -165,6 +165,15 @@ Token* next_token(void) {
         return process_quoted_symbol();
     }
 
+    if (c == '#') {
+        switch (get_next_char()){
+            case 't':
+                return create_token("#t", TOKEN_TRUE);
+            case 'f':
+                return create_token("#f", TOKEN_FALSE);
+        }
+    }
+
     if (isdigit(c)) {
         unget_char(); // Put the digit back for process_number to read
         return process_number();

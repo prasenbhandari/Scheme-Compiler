@@ -92,7 +92,187 @@ static const char* type_to_string(ValueType type){
 }
 
 
+static bool is_special_form(AstNode* operator) {
+    if (!operator || operator->type != NODE_ATOM) return false;
+    TokenType type = operator->token->type;
+    
+    return type == TOKEN_IF || 
+           type == TOKEN_DEFINE || 
+           type == TOKEN_LAMBDA ||
+           type == TOKEN_LET ||
+           type == TOKEN_LET_STAR ||
+           type == TOKEN_LETREC ||
+           type == TOKEN_LETREC_STAR ||
+           type == TOKEN_BEGIN ||
+           type == TOKEN_COND ||
+           type == TOKEN_CASE ||
+           type == TOKEN_QUOTE ||
+           type == TOKEN_QUASIQUOTE ||
+           type == TOKEN_UNQUOTE ||
+           type == TOKEN_SET ||
+           type == TOKEN_AND ||
+           type == TOKEN_OR;
+}
+
+
+// Forward declarations for functions used below
 static void analyze_node(Analyzer* a, AstNode* node);
+static bool is_special_form(AstNode* operator);
+static void analyze_special_form(Analyzer* a, AstNode* node);
+static void analyze_builtin_call(Analyzer* a, AstNode* node);
+
+
+static void analyze_if(Analyzer* a, AstNode* node){
+    int arg_count = count_args(node->cdr);
+
+    if (arg_count < 2 || arg_count > 3) {
+        report_error(node->line, node->column,
+            "'if' requires 2 or 3 arguments (condition then [else]), got %d", arg_count);
+        return;
+    }
+
+    AstNode* condition = get_arg(node->cdr, 0);
+    AstNode* then_branch = get_arg(node->cdr, 1);
+    AstNode* else_branch = (arg_count == 3) ? get_arg(node->cdr, 2) : NULL;
+
+    if (condition) analyze_node(a, condition);
+    if (then_branch) analyze_node(a, then_branch);
+    if (else_branch) analyze_node(a, else_branch);
+}
+
+
+static void analyze_cond(Analyzer* a, AstNode* node){
+    AstNode* clauses = node->cdr;
+
+    while (clauses && clauses->type != NODE_NIL){
+        AstNode* clause = clauses->car;
+
+        if(!clauses || clause->type != NODE_LIST || !clause->car){
+            report_error(node->line, node->column,
+                        "Invalid 'cond' clause: Expected a list with at least a condition");
+            return;
+        }
+
+        AstNode* condition = clause->car;
+        AstNode* result = clause->cdr;
+
+        bool is_else = (condition->type == NODE_ATOM && condition->token->type == TOKEN_ELSE);
+
+        // Analyze condition (skip for 'else' since it's not evaluated)
+        if(!is_else) {           
+            analyze_node(a, condition);
+        } else {
+            // 'else' is optional and must be last - check if there are more clauses
+            if (clauses->cdr && clauses->cdr->type != NODE_NIL) {
+                report_error(condition->line, condition->column,
+                             "'else' clause must be the last clause in 'cond'");
+                return;  // Stop processing after error
+            }
+        }
+
+        // Analyze result expressions (for both regular and else clauses)
+        while(result && result->type != NODE_NIL){
+            analyze_node(a, result->car);
+            result = result->cdr;
+        }
+
+        clauses = clauses->cdr;
+    }
+
+}
+
+
+static void analyze_op(Analyzer* a, AstNode* node){
+    AstNode* args = node->cdr;
+
+    while(args && args->type != NODE_NIL){
+        analyze_node(a, args->car);
+        args = args->cdr;
+    }
+}
+
+
+static void analyze_special_form(Analyzer* a, AstNode* node) {
+    if (!node || !node->car) return;
+    
+    TokenType form = node->car->token->type;
+    
+    switch (form) {
+        case TOKEN_IF:
+            analyze_if(a, node);
+            break;
+        case TOKEN_COND:
+            analyze_cond(a, node);
+            break;
+        case TOKEN_AND:
+        case TOKEN_OR:
+            analyze_op(a, node);
+            break;
+        case TOKEN_DEFINE:
+            // Placeholder: analyze_define(a, node);
+            report_error(node->line, node->column, 
+                        "'define' special form not yet implemented in analyzer");
+            break;
+        case TOKEN_LAMBDA:
+            // Placeholder: analyze_lambda(a, node);
+            report_error(node->line, node->column, 
+                        "'lambda' special form not yet implemented in analyzer");
+            break;
+        case TOKEN_LET:
+        case TOKEN_LET_STAR:
+        case TOKEN_LETREC:
+        case TOKEN_LETREC_STAR:
+            // Placeholder: analyze_let(a, node);
+            report_error(node->line, node->column, 
+                        "'let' special form not yet implemented in analyzer");
+            break;
+        default:
+            report_error(node->line, node->column, 
+                        "Special form not yet implemented");
+    }
+}
+
+
+static void analyze_builtin_call(Analyzer* a, AstNode* node) {
+    AstNode* operator = node->car;
+    AstNode* arg = node->cdr;
+
+    if (operator && operator->type == NODE_ATOM && operator->token->type == TOKEN_IDENTIFIER) {
+        const BuiltinInfo* info = get_builtin_info(operator->token->lexeme);
+
+        if(info) {
+            int arg_count = count_args(arg);
+
+            if(info->min_arity != -1 && arg_count < info->min_arity){
+                report_error(operator->line, operator->column, 
+                             "Too few arguments to '%s'. Expected at least %d, got %d.",
+                             info->name, info->min_arity, arg_count);
+            }
+
+            if(info->max_arity != -1 && arg_count > info->max_arity){
+                report_error(operator->line, operator->column, 
+                             "Too many arguments to '%s'. Expected at most %d, got %d.",
+                             info->name, info->max_arity, arg_count);
+            }
+
+            if (info->arg_type != VAL_ANY){
+                AstNode* temp_arg = arg;
+                int position = 1;
+
+                while(temp_arg && temp_arg->type != NODE_NIL){
+                    ValueType arg_type = get_node_type(temp_arg->car);
+                    if(arg_type != VAL_ANY && arg_type != info->arg_type){
+                        report_error(temp_arg->car->line, temp_arg->car->column, 
+                                     "Argument %d to '%s' has incorrect type. Expected %s, got %s.",
+                                     position, info->name, type_to_string(info->arg_type), type_to_string(arg_type));
+                    }
+                    temp_arg = temp_arg->cdr;
+                    position++;
+                }
+            }
+        }
+    }
+}
 
 
 static Token* create_builtin_token(const char* name){
@@ -198,41 +378,12 @@ static void analyze_node(Analyzer* a, AstNode* node){
 
             analyze_node(a, operator);
 
-            if (operator && operator->type == NODE_ATOM && operator->token->type == TOKEN_IDENTIFIER) {
-                const BuiltinInfo* info = get_builtin_info(operator->token->lexeme);
-
-                if(info) {
-                    int arg_count = count_args(arg);
-
-                    if(info->min_arity != -1 && arg_count < info->min_arity){
-                        report_error(operator->line, operator->column, 
-                                     "Too few arguments to '%s'. Expected at least %d, got %d.",
-                                     info->name, info->min_arity, arg_count);
-                    }
-
-                    if(info->max_arity != -1 && arg_count > info->max_arity){
-                        report_error(operator->line, operator->column, 
-                                     "Too many arguments to '%s'. Expected at most %d, got %d.",
-                                     info->name, info->max_arity, arg_count);
-                    }
-
-                    if (info->arg_type != VAL_ANY){
-                        AstNode* temp_arg = arg;
-                        int position = 1;
-
-                        while(temp_arg && temp_arg->type != NODE_NIL){
-                            ValueType arg_type = get_node_type(temp_arg->car);
-                            if(arg_type != VAL_ANY && arg_type != info->arg_type){
-                                report_error(temp_arg->car->line, temp_arg->car->column, 
-                                             "Argument %d to '%s' has incorrect type. Expected %s, got %s.",
-                                             position, info->name, type_to_string(info->arg_type), type_to_string(arg_type));
-                            }
-                            temp_arg = temp_arg->cdr;
-                            position++;
-                        }
-                    }
-                }
+            if (is_special_form(operator)) {
+                analyze_special_form(a, node);
+                return;
             }
+
+            analyze_builtin_call(a, node);
 
             while(arg && arg->type != NODE_NIL){
                 analyze_node(a, arg->car);
