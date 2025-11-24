@@ -25,7 +25,14 @@ typedef enum {
     // If-else
     OP_JUMP_IF_FALSE, // Jump if top stack value is false
 
+    // Variable management
+    OP_DEFINE_GLOBAL,
+    OP_GET_GLOBAL,
+    OP_SET_GLOBAL,
+
     OP_DISPLAY, // Display top stack value
+    OP_READ,    // Read input from user and push onto stack
+    OP_READ_LINE, // Read a line of text from user
     OP_HALT,    // Stop execution
     OP_POP,     // Pop top value from the stack
     OP_JUMP_IF_TRUE_OR_POP, // Jump if true (keep value), else pop

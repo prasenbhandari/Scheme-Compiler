@@ -1,5 +1,5 @@
 #include "vm/instruction.h"
-#include "vm/memory.h"
+#include "utils/memory.h"
 #include <stdio.h>
 
 void init_bytecode(Bytecode* bc) {

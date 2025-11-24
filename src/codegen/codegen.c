@@ -7,7 +7,7 @@
 #include "codegen/codegen.h"
 #include "instruction.h"
 #include "utils/error.h"
-#include "vm/memory.h"
+#include "utils/memory.h"
 
 
 static void codegen_atom(Bytecode* bc, AstNode* ast){
@@ -41,6 +41,13 @@ static void codegen_atom(Bytecode* bc, AstNode* ast){
         case TOKEN_FALSE: {
             int idx = add_constant(bc, BOOL_VAL(false));
             emit_instruction(bc, OP_CONSTANT, idx);
+            break;
+        }
+
+        case TOKEN_IDENTIFIER: {
+            const char* var_name = token->lexeme;
+            int idx = add_constant(bc, STRING_VAL(var_name));
+            emit_instruction(bc, OP_GET_GLOBAL, idx);
             break;
         }
 
@@ -81,6 +88,11 @@ static void codegen_list(Bytecode* bc, AstNode* ast){
         return;
     }
 
+    if (car->token->type == TOKEN_DEFINE) {
+        codegen_define(bc, ast);
+        return;
+    }
+
     if(car->token->type != TOKEN_IDENTIFIER){
         report_error(car->line, car->column, 
                     "Invalid function name: Expected identifier or special form, got '%s'", 
@@ -96,41 +108,91 @@ static void codegen_list(Bytecode* bc, AstNode* ast){
 
 
 static void codegen_builtin(Bytecode* bc, const char* op, AstNode* args) {
-    // Handle binary arithmetic and comparison operators
+    // Handle variadic arithmetic operators
     if (strcmp(op, "+") == 0 || strcmp(op, "-") == 0 || 
-        strcmp(op, "*") == 0 || strcmp(op, "/") == 0 ||
-        strcmp(op, "<") == 0 || strcmp(op, ">") == 0 ||
-        strcmp(op, "=") == 0 || strcmp(op, "<=") == 0 ||
-        strcmp(op, ">=") == 0 || strcmp(op, "!=") == 0) {
+        strcmp(op, "*") == 0 || strcmp(op, "/") == 0) {
         
-        // Validate we have at least 2 arguments
+        int arg_count = 0;
+        AstNode* temp = args;
+        while (temp && temp->type != NODE_NIL) {
+            arg_count++;
+            temp = temp->cdr;
+        }
+        
+        if (strcmp(op, "+") == 0 || strcmp(op, "*") == 0) {
+            // + and * can have 0 or more arguments
+            if (arg_count == 0) {
+                // (+) => 0, (*) => 1
+                int idx = add_constant(bc, NUMBER_VAL(strcmp(op, "+") == 0 ? 0.0 : 1.0));
+                emit_instruction(bc, OP_CONSTANT, idx);
+                return;
+            }
+        } else {
+            // - and / require at least 1 argument
+            if (arg_count == 0) {
+                report_error(args ? args->line : -1, args ? args->column : -1,
+                            "Operator '%s' requires at least 1 argument, got 0", op);
+                return;
+            }
+        }
+        
+        codegen_expr(bc, args->car);
+        
+        // If only one argument for - or /, apply unary operation
+        if (arg_count == 1 && (strcmp(op, "-") == 0 || strcmp(op, "/") == 0)) {
+            if (strcmp(op, "-") == 0) {
+                // (- x) => 0 - x
+                int zero_idx = add_constant(bc, NUMBER_VAL(0.0));
+                emit_instruction(bc, OP_CONSTANT, zero_idx);
+                emit_instruction(bc, OP_SUB, 0);
+            } else {
+                // (/ x) => 1 / x
+                int one_idx = add_constant(bc, NUMBER_VAL(1.0));
+                emit_instruction(bc, OP_CONSTANT, one_idx);
+                emit_instruction(bc, OP_DIV, 0);
+            }
+            return;
+        }
+        
+        args = args->cdr;
+        while (args && args->type != NODE_NIL) {
+            codegen_expr(bc, args->car);
+            
+            if (strcmp(op, "+") == 0) {
+                emit_instruction(bc, OP_ADD, 0);
+            } else if (strcmp(op, "-") == 0) {
+                emit_instruction(bc, OP_SUB, 0);
+            } else if (strcmp(op, "*") == 0) {
+                emit_instruction(bc, OP_MUL, 0);
+            } else if (strcmp(op, "/") == 0) {
+                emit_instruction(bc, OP_DIV, 0);
+            }
+            
+            args = args->cdr;
+        }
+    }
+    else if (strcmp(op, "<") == 0 || strcmp(op, ">") == 0 ||
+             strcmp(op, "=") == 0 || strcmp(op, "<=") == 0 ||
+             strcmp(op, ">=") == 0 || strcmp(op, "!=") == 0) {
+        
+        // Validate we have exactly 2 arguments
         if (args == NULL || args->type == NODE_NIL) {
             report_error(args ? args->line : -1, args ? args->column : -1,
-                        "Operator '%s' requires at least 2 arguments, got 0", op);
+                        "Operator '%s' requires 2 arguments, got 0", op);
             return;
         }
         if (args->cdr == NULL || args->cdr->type == NODE_NIL) {
             report_error(args->line, args->column,
-                        "Operator '%s' requires at least 2 arguments, got 1", op);
+                        "Operator '%s' requires 2 arguments, got 1", op);
             return;
         }
         
-        // Compile first argument (handles both atoms and nested lists automatically)
         codegen_expr(bc, args->car);
         
-        // Compile second argument
         codegen_expr(bc, args->cdr->car);
         
         // Emit the appropriate instruction based on operator
-        if (strcmp(op, "+") == 0) {
-            emit_instruction(bc, OP_ADD, 0);
-        } else if (strcmp(op, "-") == 0) {
-            emit_instruction(bc, OP_SUB, 0);
-        } else if (strcmp(op, "*") == 0) {
-            emit_instruction(bc, OP_MUL, 0);
-        } else if (strcmp(op, "/") == 0) {
-            emit_instruction(bc, OP_DIV, 0);
-        } else if (strcmp(op, "<") == 0) {
+        if (strcmp(op, "<") == 0) {
             emit_instruction(bc, OP_LESS, 0);
         } else if (strcmp(op, ">") == 0) {
             emit_instruction(bc, OP_GREATER, 0);
@@ -157,6 +219,26 @@ static void codegen_builtin(Bytecode* bc, const char* op, AstNode* args) {
         
         // Emit DISPLAY instruction
         emit_instruction(bc, OP_DISPLAY, 0);
+    }
+    else if (strcmp(op, "read") == 0) {
+        if (args != NULL && args->type != NODE_NIL) {
+            report_error(args->line, args->column,
+                        "Function 'read' requires 0 arguments, got %d", 
+                        (int)(args->cdr && args->cdr->type != NODE_NIL ? 2 : 1));
+            return;
+        }
+        
+        emit_instruction(bc, OP_READ, 0);
+    }
+    else if (strcmp(op, "read-line") == 0) {
+        if (args != NULL && args->type != NODE_NIL) {
+            report_error(args->line, args->column,
+                        "Function 'read-line' requires 0 arguments, got %d", 
+                        (int)(args->cdr && args->cdr->type != NODE_NIL ? 2 : 1));
+            return;
+        }
+        
+        emit_instruction(bc, OP_READ_LINE, 0);
     }
     else {
         // Unknown built-in - get position from first arg if available
@@ -335,6 +417,21 @@ static void codegen_if(Bytecode* bc, AstNode* ast){
 
     int after_else_index = bc->count;
     patch_jump(bc, jump_over_else_index, after_else_index);
+}
+
+
+void codegen_define(Bytecode* bc, AstNode* ast){
+    AstNode* args = ast->cdr;
+
+    const char* var_name = args->car->token->lexeme;
+
+    AstNode* value_node = args->cdr->car;
+
+    codegen_expr(bc, value_node);
+
+    int name_idx = add_constant(bc, STRING_VAL(var_name));
+
+    emit_instruction(bc, OP_DEFINE_GLOBAL, name_idx);
 }
 
 

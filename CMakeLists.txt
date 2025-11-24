@@ -19,6 +19,8 @@ include_directories(
 add_library(utils_lib
     src/utils/buffer.c
     src/utils/error.c
+    src/utils/memory.c
+    src/utils/hash.c
 )
 
 # Create scanner library
@@ -45,8 +47,8 @@ add_library(codegen_lib
 
 # Create VM library
 add_library(vm_lib
-    src/vm/memory.c
     src/vm/value.c
+    src/vm/table.c
     src/vm/instruction.c
     src/vm/vm.c
     src/vm/debug.c

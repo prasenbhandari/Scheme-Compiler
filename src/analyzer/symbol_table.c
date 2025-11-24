@@ -1,19 +1,9 @@
 #include <string.h>
 #include <stdlib.h>
 #include "../../include/analyzer/symbol_table.h"
+#include "utils/hash.h"
 
 #define INITIAL_CAPACITY 8
-
-static unsigned int hash_string(const char* key, int length){
-    unsigned int hash = 2166136261u;
-
-    for (int i = 0; i < length; i++ ){
-        hash ^= (unsigned char)key[i];
-        hash *= 16777619;
-    }
-
-    return hash;
-}
 
 
 Scope* init_scope(Scope* parent) {

@@ -10,6 +10,8 @@
 static const BuiltinInfo BUILTIN_TABLE[] = {
     // I/O procedures
     {"display", 1, 1, VAL_ANY},
+    {"read", 0, 0, VAL_ANY},
+    {"read-line", 0, 0, VAL_ANY},
 
     // Arithmetic operators
     {"+", 0, -1, VAL_NUMBER},  // (+) => 0, (+ 1) => 1, (+ 1 2 3) => 6
@@ -182,6 +184,30 @@ static void analyze_cond(Analyzer* a, AstNode* node){
 }
 
 
+static void analyze_define(Analyzer* a, AstNode* node){
+    AstNode* args = node->cdr;
+    
+    if (count_args(args) != 2){
+        report_error(node->line, node->column,
+                    "'define' requires 2 arguments (variable expression), got %d", count_args(args));
+        return;
+    }
+
+    AstNode* var = args->car;
+    AstNode* expr = args->cdr->car;
+
+    if (var->type != NODE_ATOM || var->token->type != TOKEN_IDENTIFIER){
+        report_error(var->line, var->column,
+                    "'define' requires an identifier as the first argument");
+        return;
+    }
+
+    analyze_node(a, expr);
+
+    add_symbol(a->current_scope, var->token);
+}
+
+
 static void analyze_op(Analyzer* a, AstNode* node){
     AstNode* args = node->cdr;
 
@@ -209,9 +235,7 @@ static void analyze_special_form(Analyzer* a, AstNode* node) {
             analyze_op(a, node);
             break;
         case TOKEN_DEFINE:
-            // Placeholder: analyze_define(a, node);
-            report_error(node->line, node->column, 
-                        "'define' special form not yet implemented in analyzer");
+            analyze_define(a, node);
             break;
         case TOKEN_LAMBDA:
             // Placeholder: analyze_lambda(a, node);

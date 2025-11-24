@@ -1,4 +1,3 @@
-(display "hello")
-(display (- 1 2))
-(display (- 2 (* 4 (/ 4 2))))
-(display (< 3 5))
+(cond
+  ((< 15 10) (display "won't match"))
+  ((< 20 15) (display "also won't match")))

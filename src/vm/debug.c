@@ -74,6 +74,21 @@ void disassemble_instruction(Bytecode* bc, int offset) {
         case OP_HALT:
             simple_instruction("OP_HALT", offset);
             break;
+        case OP_JUMP_IF_TRUE_OR_POP:
+            jump_instruction("OP_JUMP_IF_TRUE_OR_POP", offset, instr.operand);
+            break;
+        case OP_JUMP_IF_FALSE_OR_POP:
+            jump_instruction("OP_JUMP_IF_FALSE_OR_POP", offset, instr.operand);
+            break;
+        case OP_DEFINE_GLOBAL:
+            constant_instruction("OP_DEFINE_GLOBAL", bc, offset);
+            break;
+        case OP_GET_GLOBAL:
+            constant_instruction("OP_GET_GLOBAL", bc, offset);
+            break;
+        case OP_SET_GLOBAL:
+            constant_instruction("OP_SET_GLOBAL", bc, offset);
+            break;
         default:
             printf("Unknown opcode %d\n", instr.opcode);
             break;

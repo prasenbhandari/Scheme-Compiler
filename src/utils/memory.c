@@ -1,4 +1,4 @@
-#include "vm/memory.h"
+#include "utils/memory.h"
 #include <stdlib.h>
 #include <stdio.h>
 

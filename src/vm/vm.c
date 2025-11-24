@@ -21,10 +21,11 @@ void init_vm(VM* vm) {
     vm->ip = 0;
     vm->code = NULL;
     vm->trace_execution = false;  // Tracing disabled by default
+    init_table(&vm->globals);
 }
 
 void free_vm(VM* vm) {
-    // Nothing to free for now
+    free_table(&vm->globals);
 }
 
 void push(VM* vm, Value v) {
@@ -91,6 +92,39 @@ void vm_execute(VM* vm, Bytecode* bc) {
                 print_value(pop(vm));
                 printf("\n");
                 break;
+                
+            case OP_READ: {
+                double num;
+                if (scanf("%lf", &num) == 1) {
+                    push(vm, NUMBER_VAL(num));
+                } else {
+                    runtime_error(vm, "Failed to read number from input");
+                    exit(1);
+                }
+                break;
+            }
+                
+            case OP_READ_LINE: {
+                char buffer[1024];
+                if (fgets(buffer, sizeof(buffer), stdin)) {
+                    // Remove trailing newline if present
+                    size_t len = strlen(buffer);
+                    if (len > 0 && buffer[len - 1] == '\n') {
+                        buffer[len - 1] = '\0';
+                    }
+                    // Allocate and store string
+                    char* str = strdup(buffer);
+                    if (!str) {
+                        runtime_error(vm, "Memory allocation failed");
+                        exit(1);
+                    }
+                    push(vm, STRING_VAL(str));
+                } else {
+                    runtime_error(vm, "Failed to read line from input");
+                    exit(1);
+                }
+                break;
+            }
                 
             case OP_ADD: {
                 Value b = pop_number(vm);
@@ -202,6 +236,59 @@ void vm_execute(VM* vm, Bytecode* bc) {
                 } else {
                     pop(vm);
                 }
+                break;
+            }
+
+            case OP_DEFINE_GLOBAL: {
+                Value name_val = bc->constants[instr.operand];
+                
+                if (!IS_STRING(name_val)) {
+                    runtime_error(vm, "Fatal: Variable name is not a string");
+                    exit(1);
+                }
+                
+                char* name = AS_STRING(name_val);
+                Value value = pop_any(vm);
+                table_set(&vm->globals, name, value);
+                break;
+            }
+
+            case OP_GET_GLOBAL: {
+                Value name_val = bc->constants[instr.operand];
+                
+                if (!IS_STRING(name_val)) {
+                    runtime_error(vm, "Fatal: Variable name is not a string");
+                    exit(1);
+                }
+                
+                char* name = AS_STRING(name_val);
+                Value value;
+                if (!table_get(&vm->globals, name, &value)) {
+                    runtime_error(vm, "Undefined variable '%s'", name);
+                    exit(1);
+                }
+                push(vm, value);
+                break;
+            }
+
+            case OP_SET_GLOBAL: {
+                Value name_val = bc->constants[instr.operand];
+                
+                if (!IS_STRING(name_val)) {
+                    runtime_error(vm, "Fatal: Variable name is not a string");
+                    exit(1);
+                }
+                
+                char* name = AS_STRING(name_val);
+                Value value = pop_any(vm);
+                
+                Value dummy;
+                if (!table_get(&vm->globals, name, &dummy)) {
+                    runtime_error(vm, "Undefined variable '%s'", name);
+                    exit(1);
+                }
+                
+                table_set(&vm->globals, name, value);
                 break;
             }
                 
