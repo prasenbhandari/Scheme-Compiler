@@ -89,6 +89,15 @@ void disassemble_instruction(Bytecode* bc, int offset) {
         case OP_SET_GLOBAL:
             constant_instruction("OP_SET_GLOBAL", bc, offset);
             break;
+        case OP_CONS:
+            simple_instruction("OP_CONS", offset);
+            break;
+        case OP_CAR:
+            simple_instruction("OP_CAR", offset);
+            break;
+        case OP_CDR:
+            simple_instruction("OP_CDR", offset);
+            break;
         default:
             printf("Unknown opcode %d\n", instr.opcode);
             break;

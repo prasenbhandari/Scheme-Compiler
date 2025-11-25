@@ -93,6 +93,11 @@ static void codegen_list(Bytecode* bc, AstNode* ast){
         return;
     }
 
+    if (car->token->type == TOKEN_QUOTE) {
+        codegen_quote(bc, ast);
+        return;
+    }
+
     if(car->token->type != TOKEN_IDENTIFIER){
         report_error(car->line, car->column, 
                     "Invalid function name: Expected identifier or special form, got '%s'", 
@@ -240,12 +245,85 @@ static void codegen_builtin(Bytecode* bc, const char* op, AstNode* args) {
         
         emit_instruction(bc, OP_READ_LINE, 0);
     }
+    else if (strcmp(op, "cons") == 0) {
+        AstNode* arg1 = args;
+        AstNode* arg2 = args->cdr;
+
+        codegen_expr(bc, arg1->car);
+        codegen_expr(bc, arg2->car);
+
+        emit_instruction(bc, OP_CONS, 0);
+    }
+    else if (strcmp(op, "car") == 0) {
+        AstNode* arg1 = args;
+        
+        codegen_expr(bc, arg1->car);
+        emit_instruction(bc, OP_CAR, 0);
+    }
+    else if (strcmp(op, "cdr") == 0) {
+        AstNode* arg1 = args;
+        
+        codegen_expr(bc, arg1->car);
+        emit_instruction(bc, OP_CDR, 0);
+    }
     else {
         // Unknown built-in - get position from first arg if available
         int line = args ? args->line : -1;
         int col = args ? args->column : -1;
         report_error(line, col, "Unknown function: '%s'", op);
     }
+}
+
+
+static Value ast_to_value(AstNode* node) {
+    if (node == NULL) return NIL_VAL;
+
+    switch (node->type) {
+        case NODE_ATOM:
+            switch (node->token->type) {
+                case TOKEN_DEC:
+                    return NUMBER_VAL(node->token->int_value);
+                case TOKEN_REAL:
+                    return NUMBER_VAL(node->token->real_value);
+                case TOKEN_STR_LITERAL:
+                    return STRING_VAL(node->token->lexeme);
+                case TOKEN_TRUE:
+                    return BOOL_VAL(true);
+                case TOKEN_FALSE:
+                    return BOOL_VAL(false);
+                case TOKEN_IDENTIFIER:
+                    // For now, symbols are just strings in our VM
+                    return STRING_VAL(node->token->lexeme);
+                default:
+                    // Should not happen for valid AST
+                    return NIL_VAL;
+            }
+        
+        case NODE_LIST: {
+            // Recursively convert list to pairs
+            Value car_val = ast_to_value(node->car);
+            Value cdr_val = ast_to_value(node->cdr);
+            
+            ObjPair* pair = malloc(sizeof(ObjPair));
+            pair->car = car_val;
+            pair->cdr = cdr_val;
+            
+            return PAIR_VAL(pair);
+        }
+        
+        case NODE_NIL:
+            return NIL_VAL;
+            
+        default:
+            return NIL_VAL;
+    }
+}
+
+static void codegen_quote(Bytecode* bc, AstNode* ast) {
+    AstNode* arg = ast->cdr->car;
+    Value v = ast_to_value(arg);
+    int idx = add_constant(bc, v);
+    emit_instruction(bc, OP_CONSTANT, idx);
 }
 
 

@@ -25,7 +25,7 @@ It consists of five modules mirroring the standard phases of a compiler design:
 
 ```
     cd Scheme-Compiler
-    mkdir build
+    mkdir build && cd build
     cmake ..
     make
 ```
@@ -80,6 +80,13 @@ It consists of five modules mirroring the standard phases of a compiler design:
   (or #f #f (> 5 3))  ; => #t
   ```
 
+- **`quote`**: Quote special form to prevent evaluation
+  ```scheme
+  (quote (1 2 3))     ; => (1 2 3)
+  '(+ 1 2)            ; => (+ 1 2) [not evaluated]
+  '(a b c)            ; => (a b c)
+  ```
+
 ### Arithmetic Operators (Variadic)
 
 - **`+`**: Addition (0 or more arguments)
@@ -115,6 +122,26 @@ It consists of five modules mirroring the standard phases of a compiler design:
   ```scheme
   (< 5 10)      ; => #t
   (= 5 5)       ; => #t
+  ```
+
+### List Operations
+
+- **`cons`**: Construct a new list by prepending an element
+  ```scheme
+  (cons 1 (cons 2 (cons 3 '())))  ; => (1 2 3)
+  (cons 'a '(b c))                ; => (a b c)
+  ```
+
+- **`car`**: Get the first element (head) of a list
+  ```scheme
+  (car '(1 2 3))   ; => 1
+  (car '(a b c))   ; => a
+  ```
+
+- **`cdr`**: Get the rest of the list (tail)
+  ```scheme
+  (cdr '(1 2 3))   ; => (2 3)
+  (cdr '(a b c))   ; => (b c)
   ```
 
 ### I/O Functions

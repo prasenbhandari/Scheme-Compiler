@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <string.h>
 
 // Runtime error reporting
 static void runtime_error(VM* vm, const char* format, ...) {
@@ -92,6 +93,41 @@ void vm_execute(VM* vm, Bytecode* bc) {
                 print_value(pop(vm));
                 printf("\n");
                 break;
+
+            case OP_CONS: {
+                Value cdr = pop(vm);
+                Value car = pop(vm);
+                
+                ObjPair* pair = malloc(sizeof(ObjPair));
+                pair->car = car;
+                pair->cdr = cdr;
+                push(vm, PAIR_VAL(pair));
+                break;
+            }
+
+            case OP_CAR: {
+                Value pair = pop(vm);
+                if (!IS_PAIR(pair)) {
+                    runtime_error(vm, "Type error: Expected pair, got %s", 
+                                 IS_STRING(pair) ? "string" : 
+                                 IS_BOOL(pair) ? "boolean" : "other");
+                    exit(1);
+                }
+                push(vm, AS_PAIR(pair)->car);
+                break;
+            }
+
+            case OP_CDR: {
+                Value pair = pop(vm);
+                if (!IS_PAIR(pair)) {
+                    runtime_error(vm, "Type error: Expected pair, got %s", 
+                                 IS_STRING(pair) ? "string" : 
+                                 IS_BOOL(pair) ? "boolean" : "other");
+                    exit(1);
+                }
+                push(vm, AS_PAIR(pair)->cdr);
+                break;
+            }
                 
             case OP_READ: {
                 double num;

@@ -13,7 +13,6 @@
 static Token* process_number(void);
 static Token* process_string_literal(void);
 static Token* process_identifier(void);
-static Token* process_quoted_symbol(void);
 static Token* try_keywords(const char* lexeme);
 
 // Processing functions implementations
@@ -86,25 +85,6 @@ static Token* process_identifier(void) {
     return t;
 }
 
-static Token* process_quoted_symbol(void) {
-    get_next_char(); // Skip quote
-    int start = *get_buffer_pos();
-    
-    while(isalnum(peek_char()) || strchr("?!*=-_", peek_char())) {
-        get_next_char();
-    }
-
-    int length = *get_buffer_pos() - start;
-    char* symbol = malloc(length + 2);
-    symbol[0] = '\'';
-    strncpy(symbol + 1, get_current_buffer() + start, length);
-    symbol[length + 1] = '\0';
-
-    Token* t = create_token(symbol, TOKEN_SYMBOL);
-    free(symbol);
-    return t;
-}
-
 
 static Token* try_keywords(const char* lexeme) {
     if (!lexeme) return NULL;
@@ -162,7 +142,7 @@ Token* next_token(void) {
     }
 
     if (c == '\'') {
-        return process_quoted_symbol();
+        return create_token("'", TOKEN_QUOTE_MARK);
     }
 
     if (c == '#') {

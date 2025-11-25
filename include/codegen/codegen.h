@@ -17,5 +17,6 @@ static void codegen_cond(Bytecode* bc, AstNode* ast);
 static void codegen_and(Bytecode* bc, AstNode* ast);
 static void codegen_or(Bytecode* bc, AstNode* ast);
 static void codegen_define(Bytecode* bc, AstNode* ast);
+static void codegen_quote(Bytecode* bc, AstNode* ast);
 
 #endif // CODEGEN_H

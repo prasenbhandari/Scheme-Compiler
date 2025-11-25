@@ -149,6 +149,46 @@ AstNode* parse_expression(Parser* p){
         return NULL;
     }
     
+    if (match(p, TOKEN_QUOTE_MARK)) {
+        Token* quote_token = advance(p);  // Consume the quote mark
+        AstNode* quoted_expr = parse_expression(p);  // Parse the expression to quote
+        
+        if (!quoted_expr) {
+            free_token(quote_token);
+            return NULL;
+        }
+        
+        // Build (quote expr) as a list
+        AstNode* quote_list = (AstNode*)malloc(sizeof(AstNode));
+        quote_list->type = NODE_LIST;
+        quote_list->line = quote_token->line;
+        quote_list->column = quote_token->column;
+        
+        // Create the 'quote' atom
+        AstNode* quote_atom = (AstNode*)malloc(sizeof(AstNode));
+        quote_atom->type = NODE_ATOM;
+        quote_atom->token = create_token("quote", TOKEN_QUOTE);
+        quote_atom->car = NULL;
+        quote_atom->cdr = NULL;
+        quote_atom->line = quote_token->line;
+        quote_atom->column = quote_token->column;
+        
+        // Build cons structure: (quote . (expr . ()))
+        quote_list->car = quote_atom;
+        
+        AstNode* expr_list = (AstNode*)malloc(sizeof(AstNode));
+        expr_list->type = NODE_LIST;
+        expr_list->car = quoted_expr;
+        expr_list->cdr = create_nil_node();
+        expr_list->line = quoted_expr->line;
+        expr_list->column = quoted_expr->column;
+        
+        quote_list->cdr = expr_list;
+        
+        free_token(quote_token);
+        return quote_list;
+    }
+    
     if(match(p, TOKEN_LPAREN)){
         return parse_list(p);
     }else{
@@ -192,6 +232,21 @@ AstNode* parse_list(Parser* p){
             report_error(get_current_line(), get_current_column(),
                         "Unexpected end of file. Expected ')' to close list");
             return NULL;
+        }
+
+        if (match(p, TOKEN_DOT)) {
+            advance(p);
+
+            AstNode* tail = parse_expression(p);
+            if (!tail) return NULL;
+
+            free_ast(current_list_node->cdr);
+            current_list_node->cdr = tail;
+
+            if (!expect(p, TOKEN_RPAREN)) {
+                return NULL;
+            }
+            return node;
         }
         
         // Parse the next argument

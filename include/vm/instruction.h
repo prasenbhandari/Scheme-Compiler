@@ -30,6 +30,11 @@ typedef enum {
     OP_GET_GLOBAL,
     OP_SET_GLOBAL,
 
+    // Pair operations
+    OP_CONS,    // Create a new pair
+    OP_CAR,     // Get the car of a pair
+    OP_CDR,     // Get the cdr of a pair
+
     OP_DISPLAY, // Display top stack value
     OP_READ,    // Read input from user and push onto stack
     OP_READ_LINE, // Read a line of text from user

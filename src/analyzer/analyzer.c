@@ -13,6 +13,11 @@ static const BuiltinInfo BUILTIN_TABLE[] = {
     {"read", 0, 0, VAL_ANY},
     {"read-line", 0, 0, VAL_ANY},
 
+    // Pair procedures
+    {"cons", 2, 2, VAL_ANY},
+    {"car", 1, 1, VAL_PAIR},
+    {"cdr", 1, 1, VAL_PAIR},
+
     // Arithmetic operators
     {"+", 0, -1, VAL_NUMBER},  // (+) => 0, (+ 1) => 1, (+ 1 2 3) => 6
     {"-", 1, -1, VAL_NUMBER},  // (- 5) => -5, (- 10 3) => 7
@@ -122,6 +127,17 @@ static void analyze_node(Analyzer* a, AstNode* node);
 static bool is_special_form(AstNode* operator);
 static void analyze_special_form(Analyzer* a, AstNode* node);
 static void analyze_builtin_call(Analyzer* a, AstNode* node);
+
+
+static void analyze_quote(Analyzer* a, AstNode* node){
+    int arg_count = count_args(node->cdr);
+
+    if (arg_count != 1) {
+        report_error(node->line, node->column,
+            "'quote' requires exactly 1 argument, got %d", arg_count);
+        return;
+    }
+}
 
 
 static void analyze_if(Analyzer* a, AstNode* node){
@@ -236,6 +252,9 @@ static void analyze_special_form(Analyzer* a, AstNode* node) {
             break;
         case TOKEN_DEFINE:
             analyze_define(a, node);
+            break;
+        case TOKEN_QUOTE:
+            analyze_quote(a, node);
             break;
         case TOKEN_LAMBDA:
             // Placeholder: analyze_lambda(a, node);
