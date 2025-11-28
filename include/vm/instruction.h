@@ -42,6 +42,13 @@ typedef enum {
     OP_POP,     // Pop top value from the stack
     OP_JUMP_IF_TRUE_OR_POP, // Jump if true (keep value), else pop
     OP_JUMP_IF_FALSE_OR_POP, // Jump if false (keep value), else pop
+
+    // Functions and Closures
+    OP_CLOSURE,
+    OP_CALL,
+    OP_RETURN,
+    OP_GET_LOCAL,
+    OP_SET_LOCAL,
 } Opcode;
 
 
@@ -51,7 +58,7 @@ typedef struct{
 } Instruction;
 
 
-typedef struct {
+typedef struct Bytecode{
     Instruction* instructions;
     int count;
     int capacity;

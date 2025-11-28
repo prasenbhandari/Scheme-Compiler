@@ -98,6 +98,21 @@ void disassemble_instruction(Bytecode* bc, int offset) {
         case OP_CDR:
             simple_instruction("OP_CDR", offset);
             break;
+        case OP_CLOSURE:
+            constant_instruction("OP_CLOSURE", bc, offset);
+            break;
+        case OP_CALL:
+            jump_instruction("OP_CALL", offset, instr.operand);
+            break;
+        case OP_RETURN:
+            simple_instruction("OP_RETURN", offset);
+            break;
+        case OP_GET_LOCAL:
+            simple_instruction("OP_GET_LOCAL", offset);
+            break;
+        case OP_SET_LOCAL:
+            simple_instruction("OP_SET_LOCAL", offset);
+            break;
         default:
             printf("Unknown opcode %d\n", instr.opcode);
             break;

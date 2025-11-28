@@ -3,20 +3,31 @@
 
 #include "parser.h"
 #include "instruction.h"
+#include "value.h"
+#include <stdint.h>
+
+
+typedef struct {
+    const char* name;
+    int depth;
+} Local;
+
+
+typedef struct Compiler {
+    struct Compiler* enclosing;
+    ObjFunction* function;
+
+    Local locals[UINT8_MAX + 1];
+    int local_count;
+    int scope_depth;
+} Compiler;
+
 
 // For REPL
 Bytecode* compile(AstNode* node);
+Bytecode* compile_program(AstNode** nodes, int count);
 
 // For interpreting
-void codegen_expr(Bytecode* bc, AstNode* node);
-static void codegen_atom(Bytecode* bc, AstNode* ast);
-static void codegen_list(Bytecode* bc, AstNode* ast);
-static void codegen_builtin(Bytecode*bc, const char* op, AstNode* args);
-static void codegen_if(Bytecode* bc, AstNode* ast);
-static void codegen_cond(Bytecode* bc, AstNode* ast);
-static void codegen_and(Bytecode* bc, AstNode* ast);
-static void codegen_or(Bytecode* bc, AstNode* ast);
-static void codegen_define(Bytecode* bc, AstNode* ast);
-static void codegen_quote(Bytecode* bc, AstNode* ast);
+void codegen_expr(Compiler* compiler, AstNode* node);
 
 #endif // CODEGEN_H

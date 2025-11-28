@@ -35,6 +35,12 @@ void print_value(Value value) {
         case VAL_NIL:
             printf("()");
             break;
+        case VAL_FUNCTION:
+            printf("<fn %s>", AS_FUNCTION(value)->name ? AS_FUNCTION(value)->name : "lambda");
+            break;
+        case VAL_CLOSURE:
+            printf("<fn %s>", AS_CLOSURE(value)->function->name ? AS_CLOSURE(value)->function->name : "lambda");
+            break;
     }
 }
 

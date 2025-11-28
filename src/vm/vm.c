@@ -1,5 +1,8 @@
 #include "vm/vm.h"
+#include "instruction.h"
+#include "value.h"
 #include "vm/debug.h"
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
@@ -65,9 +68,19 @@ static Value pop_any(VM* vm) {
     return pop(vm);
 }
 
+
+static ObjClosure* new_closure(ObjFunction* function){
+    ObjClosure* closure = malloc(sizeof(ObjClosure));
+    closure->function = function;
+    return closure;
+}
+
+
 void vm_execute(VM* vm, Bytecode* bc) {
     vm->code = bc;
     vm->ip = 0;
+
+    bc = vm->code;
     
     while (vm->ip < bc->count) {
         // Trace execution if enabled
@@ -92,6 +105,7 @@ void vm_execute(VM* vm, Bytecode* bc) {
             case OP_DISPLAY:
                 print_value(pop(vm));
                 printf("\n");
+                push(vm, NIL_VAL);
                 break;
 
             case OP_CONS: {
@@ -286,6 +300,7 @@ void vm_execute(VM* vm, Bytecode* bc) {
                 char* name = AS_STRING(name_val);
                 Value value = pop_any(vm);
                 table_set(&vm->globals, name, value);
+                push(vm, NIL_VAL);
                 break;
             }
 
@@ -325,6 +340,90 @@ void vm_execute(VM* vm, Bytecode* bc) {
                 }
                 
                 table_set(&vm->globals, name, value);
+                push(vm, NIL_VAL);
+                break;
+            }
+
+            case OP_CLOSURE: {
+                Value function_val = bc->constants[instr.operand];
+                ObjFunction* function = AS_FUNCTION(function_val);
+
+                ObjClosure* closure = new_closure(function);
+
+                push(vm, CLOSURE_VAL(closure));
+                break;
+            }
+
+            case OP_CALL: {
+                int arg_count = instr.operand;
+
+                Value func_val = peek_stack(vm, arg_count);
+
+                if (!IS_CLOSURE(func_val)) {
+                    runtime_error(vm, "Attempted to call a non-function value");
+                    exit(1);
+                }
+
+                ObjClosure* closure = AS_CLOSURE(func_val);
+
+                if(arg_count != closure->function->arity) {
+                    runtime_error(vm, "Expected %d arguments but got %d", closure->function->arity, arg_count);
+                    exit(1);
+                }
+
+                if (vm->frame_count == FRAMES_MAX){
+                    runtime_error(vm, "Stack Overflow");
+                    exit(1);
+                }
+
+                CallFrame* frame = &vm->frames[vm->frame_count++];
+                frame->closure = closure;
+                frame->parent_code = vm->code;  // Save parent bytecode
+                frame->ip = vm->ip;  // Store instruction index in parent bytecode
+                frame->slots = &vm->stack[vm->stack_top - arg_count];
+
+                vm->code = closure->function->chunk;
+                vm->ip = 0;
+                bc = vm->code; // Update local bytecode pointer
+                break;
+            }
+
+            case OP_RETURN: {
+                Value result = pop(vm);
+
+                CallFrame* frame = &vm->frames[vm->frame_count - 1];
+                vm->frame_count--;
+                
+                if (vm->frame_count == 0){
+                    return;
+                }
+
+                vm->code = frame->parent_code;  // Restore parent bytecode
+                
+                // Calculate index of slots in the stack array
+                Value* slots_ptr = frame->slots;
+                int slots_idx = (int)(slots_ptr - vm->stack);
+                
+                vm->stack_top = slots_idx - 1;
+                vm->ip = frame->ip;
+                
+                push(vm, result);
+                bc = vm->code; // Update local bytecode pointer
+                break;
+            }
+
+            case OP_GET_LOCAL: {
+                uint8_t slot = (uint8_t)instr.operand;
+                CallFrame* frame = &vm->frames[vm->frame_count - 1];
+                push(vm, frame->slots[slot]);
+                break;
+            }
+
+            case OP_SET_LOCAL: {
+                uint8_t slot = (uint8_t)instr.operand;
+                CallFrame* frame = &vm->frames[vm->frame_count - 1];
+                frame->slots[slot] = pop(vm);
+                push(vm, NIL_VAL);
                 break;
             }
                 

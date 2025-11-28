@@ -140,6 +140,35 @@ static void analyze_quote(Analyzer* a, AstNode* node){
 }
 
 
+static void analyze_lambda(Analyzer* a, AstNode* node){
+    AstNode* args = node->cdr->car;
+    AstNode* body = node->cdr->cdr;
+
+    // Create new scope for lambda
+    Scope* lambda_scope = init_scope(a->current_scope);
+    a->current_scope = lambda_scope;
+
+    // Analyze arguments and add to scope
+    while (args && args->type != NODE_NIL) {
+        if (args->car->type != NODE_ATOM || args->car->token->type != TOKEN_IDENTIFIER) {
+            report_error(args->line, args->column, "Lambda arguments must be identifiers");
+        } else {
+            add_symbol(a->current_scope, args->car->token);
+        }
+        args = args->cdr;
+    }
+
+    // Analyze body
+    while (body && body->type != NODE_NIL) {
+        analyze_node(a, body->car);
+        body = body->cdr;
+    }
+    // restore previous scope
+    a->current_scope = lambda_scope->parent;
+    free_scope(lambda_scope);
+}
+
+
 static void analyze_if(Analyzer* a, AstNode* node){
     int arg_count = count_args(node->cdr);
 
@@ -257,9 +286,7 @@ static void analyze_special_form(Analyzer* a, AstNode* node) {
             analyze_quote(a, node);
             break;
         case TOKEN_LAMBDA:
-            // Placeholder: analyze_lambda(a, node);
-            report_error(node->line, node->column, 
-                        "'lambda' special form not yet implemented in analyzer");
+            analyze_lambda(a, node);
             break;
         case TOKEN_LET:
         case TOKEN_LET_STAR:
