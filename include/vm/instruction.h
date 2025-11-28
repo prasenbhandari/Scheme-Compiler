@@ -2,6 +2,7 @@
 #define INSTRUCTION_H
 
 #include "value.h"
+#include <stdint.h>
 
 
 typedef enum {
@@ -53,27 +54,27 @@ typedef enum {
 
 
 typedef struct{
-    Opcode opcode;
-    int operand;
+    uint8_t opcode;
+    uint16_t operand;
 } Instruction;
 
 
 typedef struct Bytecode{
     Instruction* instructions;
-    int count;
-    int capacity;
+    int32_t count;
+    int32_t capacity;
     
     Value* constants;
-    int constant_count;
-    int constant_capacity;
+    int32_t constant_count;
+    int32_t constant_capacity;
 } Bytecode;
 
 
 void init_bytecode(Bytecode* bc);
 void free_bytecode(Bytecode* bc);
-int add_constant(Bytecode* bc, Value v);
-void emit_instruction(Bytecode* bc, Opcode op, int operand);
-void patch_jump(Bytecode* bc, int jump_index, int target);
+int32_t add_constant(Bytecode* bc, Value v);
+void emit_instruction(Bytecode* bc, Opcode op, int32_t operand); // Operand can be int32_t in arg, but stored as uint16_t
+void patch_jump(Bytecode* bc, int32_t jump_index, int32_t target);
 
 
 #endif // INSTRUCTION_H

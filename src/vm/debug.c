@@ -2,25 +2,25 @@
 #include "vm/value.h"
 #include <stdio.h>
 
-static int simple_instruction(const char* name, int offset) {
+static int32_t simple_instruction(const char* name, int32_t offset) {
     printf("%s\n", name);
     return offset + 1;
 }
 
-static int constant_instruction(const char* name, Bytecode* bc, int offset) {
-    int constant_index = bc->instructions[offset].operand;
+static int32_t constant_instruction(const char* name, Bytecode* bc, int32_t offset) {
+    int32_t constant_index = bc->instructions[offset].operand;
     printf("%-16s %4d '", name, constant_index);
     print_value(bc->constants[constant_index]);
     printf("'\n");
     return offset + 1;
 }
 
-static int jump_instruction(const char* name, int offset, int operand) {
+static int32_t jump_instruction(const char* name, int32_t offset, int32_t operand) {
     printf("%-16s %4d\n", name, operand);
     return offset + 1;
 }
 
-void disassemble_instruction(Bytecode* bc, int offset) {
+void disassemble_instruction(Bytecode* bc, int32_t offset) {
     printf("%04d ", offset);
     
     Instruction instr = bc->instructions[offset];
@@ -122,7 +122,7 @@ void disassemble_instruction(Bytecode* bc, int offset) {
 void disassemble_bytecode(Bytecode* bc, const char* name) {
     printf("== %s ==\n", name);
     
-    for (int i = 0; i < bc->count; i++) {
+    for (int32_t i = 0; i < bc->count; i++) {
         disassemble_instruction(bc, i);
     }
 }

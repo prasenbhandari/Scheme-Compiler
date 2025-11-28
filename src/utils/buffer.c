@@ -5,14 +5,14 @@
 
 static char buffers[2][BUFFER_SIZE];
 static int current_buffer_idx = 0;
-static int buffer_pos = 0;
+static int32_t buffer_pos = 0;
 static int buffer_limits[2] = {0, 0};
 static int eof_reached = 0;
 static FILE *file_handle = NULL;
 
 // Position tracking
-static int current_line = 1;
-static int current_column = 0;
+static uint32_t current_line = 1;
+static uint32_t current_column = 0;
 
 // Forward declaration
 static int fill_buffer(int buffer_num);
@@ -96,11 +96,11 @@ char skip_whitespace(void) {
     return c;
 }
 
-int get_current_line(void) {
+uint32_t get_current_line(void) {
     return current_line;
 }
 
-int get_current_column(void) {
+uint32_t get_current_column(void) {
     return current_column;
 }
 
@@ -108,7 +108,7 @@ char* get_current_buffer(void) {
     return buffers[current_buffer_idx];
 }
 
-int* get_buffer_pos(void) {
+int32_t* get_buffer_pos(void) {
     return &buffer_pos;
 }
 

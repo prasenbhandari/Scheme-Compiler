@@ -1,6 +1,8 @@
 #ifndef TOKEN_H
 #define TOKEN_H
 
+#include <stdint.h>
+
 typedef enum {
     // Special forms (keywords) - these control evaluation and cannot be redefined
     TOKEN_AND, TOKEN_BEGIN, TOKEN_CASE, TOKEN_COND, TOKEN_DEFINE,
@@ -20,12 +22,12 @@ typedef enum {
 typedef struct {
     union {
         char* lexeme;
-        int int_value;
+        int64_t int_value;
         double real_value;
     };   
     TokenType type;
-    int line;      // Source line number
-    int column;    // Source column number
+    uint32_t line;      // Source line number
+    uint32_t column;    // Source column number
 } Token;
 
 Token* create_token(const char* lexeme, TokenType type);

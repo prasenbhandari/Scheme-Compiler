@@ -17,7 +17,7 @@ Token* create_token(const char* lexeme, TokenType type) {
     temp->column = get_current_column();
     
     if(type == TOKEN_DEC) {
-        temp->int_value = atoi(lexeme);
+        temp->int_value = strtoll(lexeme, NULL, 10);
     } else if(type == TOKEN_REAL) {
         temp->real_value = atof(lexeme);
     } else {

@@ -18,8 +18,8 @@ typedef struct Compiler {
     ObjFunction* function;
 
     Local locals[UINT8_MAX + 1];
-    int local_count;
-    int scope_depth;
+    uint8_t local_count;
+    uint8_t scope_depth;
 } Compiler;
 
 

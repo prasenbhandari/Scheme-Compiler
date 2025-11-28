@@ -2,13 +2,14 @@
 #define VALUE_H
 
 #include <stdbool.h>
+#include <stdint.h>
 
 typedef struct ObjPair ObjPair;
 typedef struct Bytecode Bytecode;
 
 typedef struct {
-    int arity;
-    int upvalue_count;
+    int32_t arity;
+    int32_t upvalue_count;
     Bytecode* chunk;
     char* name;
 } ObjFunction;

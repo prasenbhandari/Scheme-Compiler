@@ -47,8 +47,8 @@ static Token* process_number(void) {
 }
 
 static Token* process_string_literal(void) {
-    int start_line = get_current_line();
-    int start_column = get_current_column();
+    uint32_t start_line = get_current_line();
+    uint32_t start_column = get_current_column();
     get_next_char(); // Skip opening quote
     int start = *get_buffer_pos();
 

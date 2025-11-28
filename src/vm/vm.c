@@ -48,7 +48,7 @@ Value pop(VM* vm) {
     return vm->stack[--vm->stack_top];
 }
 
-Value peek_stack(VM* vm, int distance) {
+Value peek_stack(VM* vm, int32_t distance) {
     return vm->stack[vm->stack_top - 1 - distance];
 }
 
@@ -86,7 +86,7 @@ void vm_execute(VM* vm, Bytecode* bc) {
         // Trace execution if enabled
         if (vm->trace_execution) {
             printf("          ");
-            for (int i = 0; i < vm->stack_top; i++) {
+            for (int32_t i = 0; i < vm->stack_top; i++) {
                 printf("[ ");
                 print_value(vm->stack[i]);
                 printf(" ]");
@@ -402,7 +402,7 @@ void vm_execute(VM* vm, Bytecode* bc) {
                 
                 // Calculate index of slots in the stack array
                 Value* slots_ptr = frame->slots;
-                int slots_idx = (int)(slots_ptr - vm->stack);
+                int32_t slots_idx = (int32_t)(slots_ptr - vm->stack);
                 
                 vm->stack_top = slots_idx - 1;
                 vm->ip = frame->ip;

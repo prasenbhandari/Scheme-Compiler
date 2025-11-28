@@ -13,18 +13,18 @@
 typedef struct {
     ObjClosure* closure;
     Bytecode* parent_code;  // Parent function's bytecode
-    int ip;  // Instruction index in parent bytecode
+    uint32_t ip;  // Instruction index in parent bytecode
     Value* slots;
 } CallFrame;
 
 typedef struct {
     CallFrame frames[FRAMES_MAX];
-    int frame_count;
+    int32_t frame_count;
 
     Bytecode* code;
-    int ip;
+    uint32_t ip;
     Value stack[STACK_MAX];
-    int stack_top;
+    int32_t stack_top;
     bool trace_execution;  // Flag to enable/disable instruction tracing
     Table globals;
 } VM;
@@ -35,6 +35,6 @@ void vm_execute(VM* vm, Bytecode* bc);
 
 void push(VM* vm, Value v);
 Value pop(VM* vm);
-Value peek_stack(VM* vm, int distance);
+Value peek_stack(VM* vm, int32_t distance);
 
 #endif // VM_H
