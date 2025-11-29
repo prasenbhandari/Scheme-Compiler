@@ -3,8 +3,10 @@
 #include <string.h>
 
 #include "analyzer.h"
+#include "parser.h"
 #include "symbol_table.h"
 #include "error.h"
+#include "token.h"
 
 
 static const BuiltinInfo BUILTIN_TABLE[] = {
@@ -169,6 +171,54 @@ static void analyze_lambda(Analyzer* a, AstNode* node){
 }
 
 
+static void analyze_let(Analyzer* a, AstNode* node) {
+    AstNode* bindings = node->cdr->car;
+    AstNode* body = node->cdr->cdr;
+
+    // Create a new scope
+    Scope* let_scope = init_scope(a->current_scope);
+    a->current_scope = let_scope;
+
+    // Analyze bindings
+    AstNode* current = bindings;
+    while (current && current->type != NODE_NIL) {
+        AstNode* pair = current->car;
+        // Check syntax: (var val)
+        if (count_args(pair) != 2) {
+             report_error(pair->line, pair->column, "Invalid let binding");
+             return;
+        }
+        
+        AstNode* var = pair->car;
+        AstNode* val = pair->cdr->car;
+        
+        // Analyze the value expression *in the PARENT scope*
+        // (Scheme 'let' does not allow bindings to refer to each other)
+        a->current_scope = let_scope->parent; 
+        analyze_node(a, val);
+        a->current_scope = let_scope; // Switch back
+
+        // Add variable to the new scope
+        if (var->type == NODE_ATOM && var->token->type == TOKEN_IDENTIFIER) {
+            add_symbol(a->current_scope, var->token);
+        }
+
+        current = current->cdr;
+    }
+
+    // Analyze body
+    AstNode* body_expr = body;
+    while (body_expr && body_expr->type != NODE_NIL) {
+        analyze_node(a, body_expr->car);
+        body_expr = body_expr->cdr;
+    }
+
+    // Restore scope
+    a->current_scope = let_scope->parent;
+    free_scope(let_scope);
+}
+
+
 static void analyze_if(Analyzer* a, AstNode* node){
     int arg_count = count_args(node->cdr);
 
@@ -231,25 +281,61 @@ static void analyze_cond(Analyzer* a, AstNode* node){
 
 static void analyze_define(Analyzer* a, AstNode* node){
     AstNode* args = node->cdr;
+    AstNode* first_arg = args->car;
+
+    if (first_arg->type == NODE_LIST){
+        AstNode* name_node = first_arg->car;
+
+        if(name_node->type != NODE_ATOM || name_node->token->type != TOKEN_IDENTIFIER){
+            report_error(first_arg->line, first_arg->column, "Invalid function name");
+            return;
+        }
+
+        add_symbol(a->current_scope, name_node->token);
+
+        Scope* func_scope = init_scope(a->current_scope);
+        a->current_scope = func_scope;
+
+        AstNode* params = first_arg->cdr;
+        while(params && params->type != NODE_NIL){
+            if(params->car->type == NODE_ATOM && params->car->token->type == TOKEN_IDENTIFIER){
+                add_symbol(func_scope, params->car->token);
+            }
+            params = params->cdr;
+        }
+
+        AstNode* body = args->cdr;
+        while(body && body->type != NODE_NIL){
+            analyze_node(a, body->car);
+            body = body->cdr;
+        }
+
+        a->current_scope = func_scope->parent;
+        free_scope(func_scope);
+        
+        return;
+    } else {
+        
+        if (count_args(args) != 2){
+            report_error(node->line, node->column,
+                        "'define' requires 2 arguments (variable expression), got %d", count_args(args));
+            return;
+        }
+
+        AstNode* var = args->car;
+        AstNode* expr = args->cdr->car;
+
+        if (var->type != NODE_ATOM || var->token->type != TOKEN_IDENTIFIER){
+            report_error(var->line, var->column,
+                        "'define' requires an identifier as the first argument");
+            return;
+        }
+
+        analyze_node(a, expr);
+
+        add_symbol(a->current_scope, var->token);
+    }
     
-    if (count_args(args) != 2){
-        report_error(node->line, node->column,
-                    "'define' requires 2 arguments (variable expression), got %d", count_args(args));
-        return;
-    }
-
-    AstNode* var = args->car;
-    AstNode* expr = args->cdr->car;
-
-    if (var->type != NODE_ATOM || var->token->type != TOKEN_IDENTIFIER){
-        report_error(var->line, var->column,
-                    "'define' requires an identifier as the first argument");
-        return;
-    }
-
-    analyze_node(a, expr);
-
-    add_symbol(a->current_scope, var->token);
 }
 
 
@@ -289,6 +375,8 @@ static void analyze_special_form(Analyzer* a, AstNode* node) {
             analyze_lambda(a, node);
             break;
         case TOKEN_LET:
+            analyze_let(a, node);
+            break;
         case TOKEN_LET_STAR:
         case TOKEN_LETREC:
         case TOKEN_LETREC_STAR:

@@ -42,5 +42,6 @@ void free_ast(AstNode* node);
 
 // Helper: get the nth argument (0-based) from a cons-cell argument list
 AstNode* get_arg(AstNode* args, int n);
+AstNode* create_nil_node();
 
 #endif

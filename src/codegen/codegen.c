@@ -7,8 +7,9 @@
 #include "parser/parser.h"
 #include "codegen/codegen.h"
 #include "instruction.h"
+#include "token.h"
 #include "utils/error.h"
-#include "utils/memory.h"
+#include "value.h"
 
 
 static void codegen_atom(Compiler* compiler, AstNode* ast);
@@ -21,6 +22,7 @@ static void codegen_or(Compiler* compiler, AstNode* ast);
 static void codegen_define(Compiler* compiler, AstNode* ast);
 static void codegen_quote(Compiler* compiler, AstNode* ast);
 static void codegen_lambda(Compiler* compiler, AstNode* ast);
+static ObjFunction* compile_function_obj(Compiler* compiler, AstNode* args, AstNode* body);
 
 
 static void init_compiler(Compiler* compiler, Compiler* parent, int type){
@@ -45,6 +47,72 @@ static int resolve_local(Compiler* compiler, const char* name) {
     }
     return -1;
 }
+
+
+static void codegen_let(Compiler* compiler, AstNode* ast) {
+    Bytecode* bc = current_chunk(compiler);
+    AstNode* bindings = ast->cdr->car;
+    AstNode* body = ast->cdr->cdr;
+
+    // Build the argument list for the lambda first
+    AstNode* args_head = NULL;
+    AstNode* args_tail = NULL;
+    int binding_count = 0;
+    
+    AstNode* current_binding = bindings;
+    while (current_binding && current_binding->type != NODE_NIL) {
+        AstNode* pair = current_binding->car;
+        AstNode* var = pair->car; // The variable name node
+        
+        // Create a new cons node for this argument
+        AstNode* new_node = malloc(sizeof(AstNode));
+        new_node->type = NODE_LIST;
+        new_node->car = var; 
+        new_node->cdr = NULL;
+        new_node->line = var->line;
+        new_node->column = var->column;
+        new_node->token = NULL;
+
+        if (args_head == NULL) {
+            args_head = new_node;
+            args_tail = new_node;
+        } else {
+            args_tail->cdr = new_node;
+            args_tail = new_node;
+        }
+        
+        current_binding = current_binding->cdr;
+        binding_count++;
+    }
+    
+    // Terminate the list
+    if (args_tail) {
+        args_tail->cdr = create_nil_node();
+    } else {
+        args_head = create_nil_node();
+    }
+
+    // Compile the implicit Lambda
+    // This pushes the function object onto the stack FIRST
+    ObjFunction* function = compile_function_obj(compiler, args_head, body);
+    int constant = add_constant(bc, FUNCTION_VAL(function));
+    emit_instruction(bc, OP_CLOSURE, constant);
+
+    // Compile the values (arguments)
+    // These are pushed onto the stack AFTER the function
+    current_binding = bindings;
+    while (current_binding && current_binding->type != NODE_NIL) {
+        AstNode* pair = current_binding->car; // (var val)
+        AstNode* val = pair->cdr->car;
+        
+        codegen_expr(compiler, val); // Compile the value
+        
+        current_binding = current_binding->cdr;
+    }
+
+    // Emit Call
+    emit_instruction(bc, OP_CALL, binding_count);
+}    
 
 
 static void codegen_atom(Compiler* compiler, AstNode* ast){
@@ -143,6 +211,11 @@ static void codegen_list(Compiler* compiler, AstNode* ast){
 
         if (type == TOKEN_LAMBDA) {
             codegen_lambda(compiler, ast);
+            return;
+        }
+
+        if (type == TOKEN_LET) {
+            codegen_let(compiler, ast);
             return;
         }
     }
@@ -317,6 +390,17 @@ static bool codegen_builtin(Compiler* compiler, const char* op, AstNode* args) {
         }
         
         emit_instruction(bc, OP_READ_LINE, 0);
+        return true;
+    }
+    else if (strcmp(op, "newline") == 0) {
+        if (args != NULL && args->type != NODE_NIL) {
+            report_error(args->line, args->column,
+                        "Function 'newline' requires 0 arguments, got %d", 
+                        (int)(args->cdr && args->cdr->type != NODE_NIL ? 2 : 1));
+            return true;
+        }
+        
+        emit_instruction(bc, OP_NEWLINE, 0);
         return true;
     }
     else if (strcmp(op, "cons") == 0) {
@@ -579,22 +663,7 @@ static void codegen_if(Compiler* compiler, AstNode* ast){
 }
 
 
-void codegen_define(Compiler* compiler, AstNode* ast){
-    Bytecode* bc = current_chunk(compiler);
-    AstNode* args = ast->cdr;
-
-    const char* var_name = args->car->token->lexeme;
-
-    AstNode* value_node = args->cdr->car;
-
-    codegen_expr(compiler, value_node);
-
-    int name_idx = add_constant(bc, STRING_VAL(var_name));
-
-    emit_instruction(bc, OP_DEFINE_GLOBAL, name_idx);
-}
-
-static void codegen_lambda(Compiler* current, AstNode* ast) {
+static ObjFunction* compile_function_obj(Compiler* current, AstNode* args, AstNode* body){
     // Create a new Compiler for this function
     Compiler compiler;
     init_compiler(&compiler, current, 0);
@@ -608,7 +677,6 @@ static void codegen_lambda(Compiler* current, AstNode* ast) {
     init_bytecode(compiler.function->chunk);
     
     // Parse arguments
-    AstNode* args = ast->cdr->car;
     while (args && args->type != NODE_NIL) {
         compiler.function->arity++;
         if (compiler.local_count < UINT8_MAX) {
@@ -620,7 +688,6 @@ static void codegen_lambda(Compiler* current, AstNode* ast) {
     }
     
     // Compile Body
-    AstNode* body = ast->cdr->cdr;
     while (body && body->type != NODE_NIL) {
         codegen_expr(&compiler, body->car);
         // If there are multiple expressions, pop the result of the previous ones
@@ -632,9 +699,51 @@ static void codegen_lambda(Compiler* current, AstNode* ast) {
     
     // Emit Return
     emit_instruction(current_chunk(&compiler), OP_RETURN, 0);
-    
+
+    return compiler.function;
+}
+
+
+static void codegen_define(Compiler* compiler, AstNode* ast){
+    Bytecode* bc = current_chunk(compiler);
+    AstNode* args = ast->cdr;
+
+    if(args->car->type == NODE_LIST) {
+        AstNode* func_head = args->car;
+        const char* func_name = func_head->car->token->lexeme;
+        AstNode* func_args = func_head->cdr;
+        AstNode* func_body = args->cdr;
+
+        ObjFunction* function = compile_function_obj(compiler, func_args, func_body);
+        function->name = strdup(func_name);
+
+        int constant = add_constant(bc, FUNCTION_VAL(function));
+        emit_instruction(bc, OP_CLOSURE, constant);
+
+        int name_idx = add_constant(bc, STRING_VAL(func_name));
+        emit_instruction(bc, OP_DEFINE_GLOBAL, name_idx);
+    } else {
+        const char* var_name = args->car->token->lexeme;
+
+        AstNode* value_node = args->cdr->car;
+
+        codegen_expr(compiler, value_node);
+
+        int name_idx = add_constant(bc, STRING_VAL(var_name));
+
+        emit_instruction(bc, OP_DEFINE_GLOBAL, name_idx);
+    }
+
+}
+
+
+static void codegen_lambda(Compiler* current, AstNode* ast) {
+    AstNode* args = ast->cdr->car;
+    AstNode* body = ast->cdr->cdr;
+
+    ObjFunction* func = compile_function_obj(current, args, body);
     // Wrap in Closure in the PARENT chunk
-    int constant = add_constant(current_chunk(current), FUNCTION_VAL(compiler.function));
+    int constant = add_constant(current_chunk(current), FUNCTION_VAL(func));
     emit_instruction(current_chunk(current), OP_CLOSURE, constant);
 }
 

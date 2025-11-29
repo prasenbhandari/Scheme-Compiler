@@ -41,6 +41,7 @@ typedef enum {
     OP_READ_LINE, // Read a line of text from user
     OP_HALT,    // Stop execution
     OP_POP,     // Pop top value from the stack
+    OP_NEWLINE, // Print a newline character
     OP_JUMP_IF_TRUE_OR_POP, // Jump if true (keep value), else pop
     OP_JUMP_IF_FALSE_OR_POP, // Jump if false (keep value), else pop
 

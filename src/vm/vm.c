@@ -108,6 +108,11 @@ void vm_execute(VM* vm, Bytecode* bc) {
                 push(vm, NIL_VAL);
                 break;
 
+            case OP_NEWLINE:
+                printf("\n");
+                push(vm, NIL_VAL);
+                break;
+
             case OP_CONS: {
                 Value cdr = pop(vm);
                 Value car = pop(vm);

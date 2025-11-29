@@ -68,6 +68,9 @@ void disassemble_instruction(Bytecode* bc, int32_t offset) {
         case OP_DISPLAY:
             simple_instruction("OP_DISPLAY", offset);
             break;
+        case OP_NEWLINE:
+            simple_instruction("OP_NEWLINE", offset);
+            break;
         case OP_POP:
             simple_instruction("OP_POP", offset);
             break;
