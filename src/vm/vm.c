@@ -25,6 +25,7 @@ void init_vm(VM* vm) {
     vm->ip = 0;
     vm->code = NULL;
     vm->trace_execution = false;  // Tracing disabled by default
+    vm->open_upvalues = NULL;
     init_table(&vm->globals);
 }
 
@@ -72,7 +73,45 @@ static Value pop_any(VM* vm) {
 static ObjClosure* new_closure(ObjFunction* function){
     ObjClosure* closure = malloc(sizeof(ObjClosure));
     closure->function = function;
+    closure->upvalues = malloc(sizeof(ObjUpvalue*) * function->upvalue_count);
+    closure->upvalue_count = function->upvalue_count;
     return closure;
+}
+
+static ObjUpvalue* capture_upvalue(VM* vm, Value* local) {
+    ObjUpvalue* prev_upvalue = NULL;
+    ObjUpvalue* upvalue = vm->open_upvalues;
+
+    while (upvalue != NULL && upvalue->location > local) {
+        prev_upvalue = upvalue;
+        upvalue = upvalue->next;
+    }
+
+    if (upvalue != NULL && upvalue->location == local) {
+        return upvalue;
+    }
+
+    ObjUpvalue* created_upvalue = malloc(sizeof(ObjUpvalue));
+    created_upvalue->location = local;
+    created_upvalue->closed = NIL_VAL;
+    created_upvalue->next = upvalue;
+
+    if (prev_upvalue == NULL) {
+        vm->open_upvalues = created_upvalue;
+    } else {
+        prev_upvalue->next = created_upvalue;
+    }
+
+    return created_upvalue;
+}
+
+static void close_upvalues(VM* vm, Value* last) {
+    while (vm->open_upvalues != NULL && vm->open_upvalues->location >= last) {
+        ObjUpvalue* upvalue = vm->open_upvalues;
+        upvalue->closed = *upvalue->location;
+        upvalue->location = &upvalue->closed;
+        vm->open_upvalues = upvalue->next;
+    }
 }
 
 
@@ -354,8 +393,21 @@ void vm_execute(VM* vm, Bytecode* bc) {
                 ObjFunction* function = AS_FUNCTION(function_val);
 
                 ObjClosure* closure = new_closure(function);
-
                 push(vm, CLOSURE_VAL(closure));
+
+                for (int i = 0; i < closure->upvalue_count; i++) {
+                    Instruction upvalue_instr = bc->instructions[vm->ip++];
+                    uint8_t is_local = (uint8_t)upvalue_instr.opcode;
+                    uint8_t index = (uint8_t)upvalue_instr.operand;
+                    
+                    if (is_local) {
+                        CallFrame* frame = &vm->frames[vm->frame_count - 1];
+                        closure->upvalues[i] = capture_upvalue(vm, frame->slots + index);
+                    } else {
+                        CallFrame* frame = &vm->frames[vm->frame_count - 1];
+                        closure->upvalues[i] = frame->closure->upvalues[index];
+                    }
+                }
                 break;
             }
 
@@ -413,7 +465,29 @@ void vm_execute(VM* vm, Bytecode* bc) {
                 vm->ip = frame->ip;
                 
                 push(vm, result);
+                close_upvalues(vm, frame->slots);
                 bc = vm->code; // Update local bytecode pointer
+                break;
+            }
+
+            case OP_GET_UPVALUE: {
+                uint8_t slot = (uint8_t)instr.operand;
+                CallFrame* frame = &vm->frames[vm->frame_count - 1];
+                push(vm, *frame->closure->upvalues[slot]->location);
+                break;
+            }
+
+            case OP_SET_UPVALUE: {
+                uint8_t slot = (uint8_t)instr.operand;
+                CallFrame* frame = &vm->frames[vm->frame_count - 1];
+                *frame->closure->upvalues[slot]->location = pop(vm);
+                push(vm, NIL_VAL);
+                break;
+            }
+
+            case OP_CLOSE_UPVALUE: {
+                close_upvalues(vm, &vm->stack[vm->stack_top - 1]);
+                pop(vm);
                 break;
             }
 

@@ -5,6 +5,6 @@
 #include <stdint.h>
 
 void disassemble_bytecode(Bytecode* bc, const char* name);
-void disassemble_instruction(Bytecode* bc, int32_t offset);
+int32_t disassemble_instruction(Bytecode* bc, int32_t offset);
 
 #endif // DEBUG_H

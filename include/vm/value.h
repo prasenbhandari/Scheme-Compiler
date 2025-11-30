@@ -6,6 +6,8 @@
 
 typedef struct ObjPair ObjPair;
 typedef struct Bytecode Bytecode;
+typedef struct ObjUpvalue ObjUpvalue;
+typedef struct ObjClosure ObjClosure;
 
 typedef struct {
     int32_t arity;
@@ -15,9 +17,7 @@ typedef struct {
 } ObjFunction;
 
 
-typedef struct {
-    ObjFunction* function;
-} ObjClosure;
+
 
 typedef enum {
     VAL_NUMBER,
@@ -46,6 +46,18 @@ typedef struct {
 struct ObjPair {
     Value car;
     Value cdr;
+};
+
+struct ObjUpvalue {
+    Value* location;
+    Value closed;
+    struct ObjUpvalue* next;
+};
+
+struct ObjClosure {
+    ObjFunction* function;
+    ObjUpvalue** upvalues;
+    int upvalue_count;
 };
 
 // Type checking macros

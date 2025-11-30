@@ -10,7 +10,13 @@
 typedef struct {
     const char* name;
     int depth;
+    bool is_captured;
 } Local;
+
+typedef struct {
+    uint8_t index;
+    bool is_local;
+} Upvalue;
 
 
 typedef struct Compiler {
@@ -19,6 +25,7 @@ typedef struct Compiler {
 
     Local locals[UINT8_MAX + 1];
     uint8_t local_count;
+    Upvalue upvalues[UINT8_MAX + 1];
     uint8_t scope_depth;
 } Compiler;
 

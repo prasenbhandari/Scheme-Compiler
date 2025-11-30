@@ -20,7 +20,7 @@ static int32_t jump_instruction(const char* name, int32_t offset, int32_t operan
     return offset + 1;
 }
 
-void disassemble_instruction(Bytecode* bc, int32_t offset) {
+int32_t disassemble_instruction(Bytecode* bc, int32_t offset) {
     printf("%04d ", offset);
     
     Instruction instr = bc->instructions[offset];
@@ -101,9 +101,22 @@ void disassemble_instruction(Bytecode* bc, int32_t offset) {
         case OP_CDR:
             simple_instruction("OP_CDR", offset);
             break;
-        case OP_CLOSURE:
-            constant_instruction("OP_CLOSURE", bc, offset);
-            break;
+        case OP_CLOSURE: {
+            uint8_t constant = bc->instructions[offset].operand;
+            printf("%-16s %4d '", "OP_CLOSURE", constant);
+            print_value(bc->constants[constant]);
+            printf("'\n");
+
+            ObjFunction* function = AS_FUNCTION(bc->constants[constant]);
+            for (int j = 0; j < function->upvalue_count; j++) {
+                int is_local = bc->instructions[offset + 1].opcode;
+                int index = bc->instructions[offset + 1].operand;
+                printf("%04d      |                     %s %d\n",
+                       offset + 1, is_local ? "local" : "upvalue", index);
+                offset++;
+            }
+            return offset + 1;
+        }
         case OP_CALL:
             jump_instruction("OP_CALL", offset, instr.operand);
             break;
@@ -116,9 +129,18 @@ void disassemble_instruction(Bytecode* bc, int32_t offset) {
         case OP_SET_LOCAL:
             simple_instruction("OP_SET_LOCAL", offset);
             break;
+        case OP_GET_UPVALUE:
+            simple_instruction("OP_GET_UPVALUE", offset);
+            break;
+        case OP_SET_UPVALUE:
+            simple_instruction("OP_SET_UPVALUE", offset);
+            break;
+        case OP_CLOSE_UPVALUE:
+            simple_instruction("OP_CLOSE_UPVALUE", offset);
+            break;
         default:
             printf("Unknown opcode %d\n", instr.opcode);
-            break;
+            return offset + 1;
     }
 }
 

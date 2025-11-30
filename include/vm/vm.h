@@ -27,6 +27,7 @@ typedef struct {
     int32_t stack_top;
     bool trace_execution;  // Flag to enable/disable instruction tracing
     Table globals;
+    ObjUpvalue* open_upvalues;
 } VM;
 
 void init_vm(VM* vm);

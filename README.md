@@ -54,6 +54,20 @@ It consists of five modules mirroring the standard phases of a compiler design:
   (define name "Alice")
   ```
 
+- **`lambda`**: Anonymous functions (closures)
+
+  ```scheme
+  (lambda (x) (+ x 1))
+  ((lambda (x y) (+ x y)) 10 20)
+  ```
+
+- **`let`**: Local variable bindings (syntactic sugar for `lambda`)
+
+  ```scheme
+  (let ((x 10) (y 5))
+    (+ x y))
+  ```
+
 - **`if`**: Conditional expressions
 
   ```scheme
@@ -161,4 +175,9 @@ It consists of five modules mirroring the standard phases of a compiler design:
 - **`read-line`**: Read a line of text from stdin
   ```scheme
   (define name (read-line))
+  ```
+
+- **`newline`**: Print a newline character
+  ```scheme
+  (newline)
   ```

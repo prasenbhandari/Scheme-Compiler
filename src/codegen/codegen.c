@@ -48,6 +48,43 @@ static int resolve_local(Compiler* compiler, const char* name) {
     return -1;
 }
 
+static int add_upvalue(Compiler* compiler, uint8_t index, bool is_local) {
+    int upvalue_count = compiler->function->upvalue_count;
+
+    for (int i = 0; i < upvalue_count; i++) {
+        Upvalue* upvalue = &compiler->upvalues[i];
+        if (upvalue->index == index && upvalue->is_local == is_local) {
+            return i;
+        }
+    }
+
+    if (upvalue_count == UINT8_MAX + 1) {
+        // Too many closures!
+        return -1;
+    }
+
+    compiler->upvalues[upvalue_count].is_local = is_local;
+    compiler->upvalues[upvalue_count].index = index;
+    return compiler->function->upvalue_count++;
+}
+
+static int resolve_upvalue(Compiler* compiler, const char* name) {
+    if (compiler->enclosing == NULL) return -1;
+
+    int local = resolve_local(compiler->enclosing, name);
+    if (local != -1) {
+        compiler->enclosing->locals[local].is_captured = true;
+        return add_upvalue(compiler, (uint8_t)local, true);
+    }
+
+    int upvalue = resolve_upvalue(compiler->enclosing, name);
+    if (upvalue != -1) {
+        return add_upvalue(compiler, (uint8_t)upvalue, false);
+    }
+
+    return -1;
+}
+
 
 static void codegen_let(Compiler* compiler, AstNode* ast) {
     Bytecode* bc = current_chunk(compiler);
@@ -94,9 +131,7 @@ static void codegen_let(Compiler* compiler, AstNode* ast) {
 
     // Compile the implicit Lambda
     // This pushes the function object onto the stack FIRST
-    ObjFunction* function = compile_function_obj(compiler, args_head, body);
-    int constant = add_constant(bc, FUNCTION_VAL(function));
-    emit_instruction(bc, OP_CLOSURE, constant);
+    compile_function_obj(compiler, args_head, body);
 
     // Compile the values (arguments)
     // These are pushed onto the stack AFTER the function
@@ -157,8 +192,13 @@ static void codegen_atom(Compiler* compiler, AstNode* ast){
             if (local_idx != -1) {
                 emit_instruction(bc, OP_GET_LOCAL, local_idx);
             } else {
-                int idx = add_constant(bc, STRING_VAL(var_name));
-                emit_instruction(bc, OP_GET_GLOBAL, idx);
+                int upvalue_idx = resolve_upvalue(compiler, var_name);
+                if (upvalue_idx != -1) {
+                    emit_instruction(bc, OP_GET_UPVALUE, upvalue_idx);
+                } else {
+                    int idx = add_constant(bc, STRING_VAL(var_name));
+                    emit_instruction(bc, OP_GET_GLOBAL, idx);
+                }
             }
             break;
         }
@@ -683,6 +723,7 @@ static ObjFunction* compile_function_obj(Compiler* current, AstNode* args, AstNo
             Local* local = &compiler.locals[compiler.local_count++];
             local->name = args->car->token->lexeme;
             local->depth = 1;
+            local->is_captured = false;
         }
         args = args->cdr;
     }
@@ -699,6 +740,16 @@ static ObjFunction* compile_function_obj(Compiler* current, AstNode* args, AstNo
     
     // Emit Return
     emit_instruction(current_chunk(&compiler), OP_RETURN, 0);
+
+    // Emit Closure instruction in the PARENT chunk
+    Bytecode* parent_bc = current_chunk(current);
+    int constant = add_constant(parent_bc, FUNCTION_VAL(compiler.function));
+    emit_instruction(parent_bc, OP_CLOSURE, constant);
+
+    // Emit upvalue operands
+    for (int i = 0; i < compiler.function->upvalue_count; i++) {
+        emit_instruction(parent_bc, compiler.upvalues[i].is_local ? 1 : 0, compiler.upvalues[i].index);
+    }
 
     return compiler.function;
 }
@@ -717,8 +768,6 @@ static void codegen_define(Compiler* compiler, AstNode* ast){
         ObjFunction* function = compile_function_obj(compiler, func_args, func_body);
         function->name = strdup(func_name);
 
-        int constant = add_constant(bc, FUNCTION_VAL(function));
-        emit_instruction(bc, OP_CLOSURE, constant);
 
         int name_idx = add_constant(bc, STRING_VAL(func_name));
         emit_instruction(bc, OP_DEFINE_GLOBAL, name_idx);
@@ -741,10 +790,7 @@ static void codegen_lambda(Compiler* current, AstNode* ast) {
     AstNode* args = ast->cdr->car;
     AstNode* body = ast->cdr->cdr;
 
-    ObjFunction* func = compile_function_obj(current, args, body);
-    // Wrap in Closure in the PARENT chunk
-    int constant = add_constant(current_chunk(current), FUNCTION_VAL(func));
-    emit_instruction(current_chunk(current), OP_CLOSURE, constant);
+    compile_function_obj(current, args, body);
 }
 
 
